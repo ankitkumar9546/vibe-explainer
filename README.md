@@ -39,7 +39,8 @@ is recorded under `~/.vibe-explainer/`.
 | `/vibe-explainer:console` | Opens the console in your browser: a live timeline, logs, the diff, the wiring map, the impact (who calls the code that changed), packages and security, and the lesson |
 
 You can also just ask *"what did you change and is it safe?"*. The bundled skill answers from
-the recorded evidence, not from memory.
+the recorded evidence, not from memory. In the console, "Ask this session" does the same, and
+you can click any line of the diff to ask what it does.
 
 ## Without the plugin (CLI)
 
@@ -49,6 +50,7 @@ node packages/cli/bin/vibe-explainer.js init /path/to/project     # hooks for on
 node packages/cli/bin/vibe-explainer.js open /path/to/project     # the console
 node packages/cli/bin/vibe-explainer.js analyze /path/to/project      # callers, packages, security notes
 node packages/cli/bin/vibe-explainer.js explain /path/to/project --lang en
+node packages/cli/bin/vibe-explainer.js export /path/to/project --kind pr   # or commit, note
 node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson after every prompt
 ```
 

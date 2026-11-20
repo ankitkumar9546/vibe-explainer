@@ -5,6 +5,28 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { readJson } from "./store.js";
 import { ensureAnalysis } from "./analyzer/index.js";
+import { buildTodo } from "./todo.js";
+import { buildExport } from "./export.js";
+import { learningRecord, readQuiz, saveQuiz } from "./learning.js";
+import { askSession, checkExplanation } from "./teacher/chat.js";
+
+/** Read a small JSON request body. */
+function readBody(req, limit = 32 * 1024) {
+  return new Promise((resolve, reject) => {
+    let size = 0; const chunks = [];
+    req.on("data", (c) => { size += c.length; if (size > limit) { reject(Object.assign(new Error("body too large"), { code: 413 })); req.destroy(); } else chunks.push(c); });
+    req.on("end", () => { try { resolve(chunks.length ? JSON.parse(Buffer.concat(chunks).toString("utf8")) : {}); } catch { reject(Object.assign(new Error("bad JSON"), { code: 400 })); } });
+    req.on("error", reject);
+  });
+}
+
+/** Everything the console and the exports need about one turn. */
+function turnData(store, projectId, sessionId, n) {
+  const dir = store.turnDir(projectId, sessionId, n);
+  const turn = readJson(path.join(dir, "turn.json"));
+  if (!turn) return null;
+  return { turn, events: store.readEvents(projectId, sessionId).filter((e) => e.turn === n), lesson: readJson(path.join(dir, "lesson.json")), analysis: readJson(path.join(dir, "analysis.json")) };
+}
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".json": "application/json" };
 
@@ -43,7 +65,8 @@ function turnsOf(store, projectId, sessionId) {
  * @param {{staticDir: string, port?: number, token?: string, onExplain?: (ids: object, opts: object) => Promise<any>, online?: () => boolean, fetchFn?: Function}} opts
  * @returns {Promise<{server: http.Server, port: number, token: string, url: string, close: () => Promise<void>}>}
  */
-export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach, online = () => false, fetchFn } = {}) {
+export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach, online = () => false, fetchFn, makeTeacher } = {}) {
+  const asking = new Set(); // sessions with a chat question in flight
   const busy = new Set(); // turns being taught right now
 
   // mode auto: while the console is open, teach finished turns that have no lesson yet, one at a time.
@@ -99,6 +122,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
           const dir = store.turnDir(projectId, sessionId, turn);
           const t = readJson(path.join(dir, "turn.json"));
           if (!t) return send(res, 404, { error: "no such turn" });
+          const ids = { projectId, sessionId, turn };
           let diff = ""; try { diff = fs.readFileSync(path.join(dir, "diff.patch"), "utf8"); } catch { /* not yet */ }
           let analysis = null;
           if (t.after) { try { analysis = await ensureAnalysis(store, { projectId, sessionId, turn }, { online: !!online(), fetchFn }); } catch { /* shown as missing */ } }
@@ -106,7 +130,45 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
             turn: { ...t, teaching: busy.has(`${projectId}/${sessionId}/${turn}`) },
             events: store.readEvents(projectId, sessionId).filter((e) => e.turn === turn),
             diff, analysis, lesson: readJson(path.join(dir, "lesson.json")),
+            quiz: readQuiz(store, ids),
+            todo: buildTodo({ turn: t, events: store.readEvents(projectId, sessionId).filter((e) => e.turn === turn), lesson: readJson(path.join(dir, "lesson.json")), analysis }),
           });
+        }
+        case "/api/export": {
+          const kind = ["pr", "commit", "note"].includes(q("kind")) ? q("kind") : "pr", lang = q("lang") === "hi" ? "hi" : "en";
+          const project = readJson(path.join(store.projectDir(projectId), "project.json"));
+          if (!project) return send(res, 404, { error: "no such project" });
+          const turns = [];
+          for (let n = 1; n <= store.currentTurn(projectId, sessionId); n++) { const d = turnData(store, projectId, sessionId, n); if (d) turns.push(d); }
+          return send(res, 200, { kind, lang, text: buildExport(kind, { project: project.name, turns }, lang) });
+        }
+        case "/api/record": {
+          if (!readJson(path.join(store.projectDir(projectId), "project.json"))) return send(res, 404, { error: "no such project" });
+          return send(res, 200, learningRecord(store, projectId));
+        }
+        case "/api/quiz": {
+          if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+          const body = await readBody(req);
+          const r = saveQuiz(store, { projectId, sessionId, turn }, { question: Number(body.question), answer: Number(body.answer), reset: body.reset === true });
+          return send(res, r.ok ? 200 : 400, r);
+        }
+        case "/api/chat":
+        case "/api/explain-back": {
+          if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+          if (!makeTeacher) return send(res, 501, { error: "the teacher is not available" });
+          const body = await readBody(req);
+          const lang = body.lang === "en" ? "en" : "hi", key = `${projectId}/${sessionId}`;
+          if (asking.has(key)) return send(res, 429, { error: "one question at a time" });
+          asking.add(key);
+          try {
+            const teacher = makeTeacher();
+            const r = url.pathname === "/api/chat"
+              ? await askSession(store, { projectId, sessionId }, { teacher, lang, question: String(body.question ?? ""), focusTurn: Number(body.turn) || null,
+                  history: Array.isArray(body.history) ? body.history.filter((m) => m && typeof m.t === "string").map((m) => ({ who: m.who === "me" ? "me" : "ai", t: m.t.slice(0, 2000) })) : [],
+                  line: body.line && typeof body.line.text === "string" ? { file: String(body.line.file ?? "").slice(0, 300), text: body.line.text.slice(0, 500) } : null })
+              : await checkExplanation(store, { projectId, sessionId, turn }, { teacher, lang, text: String(body.text ?? "") });
+            return send(res, r.ok ? 200 : 502, r);
+          } finally { asking.delete(key); }
         }
         case "/api/explain": {
           if (req.method !== "POST") return send(res, 405, { error: "POST only" });
@@ -146,6 +208,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
         default: return send(res, 404, { error: "unknown endpoint" });
       }
     } catch (err) {
+      if (err.code === 400 || err.code === 413) return send(res, err.code, { error: err.message });
       return send(res, 500, { error: String(err.message ?? err) });
     }
   });

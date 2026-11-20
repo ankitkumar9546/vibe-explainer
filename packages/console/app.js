@@ -1,4 +1,4 @@
-// vibe-explainer console (Roadmap Phases 4, 6 and 7): real data from the local server.
+// vibe-explainer console (Roadmap Phases 4, 6, 7 and 8): real data from the local server.
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const code = (s) => String(s ?? "").split("`").map((p, i) => (i % 2 ? `<code>${esc(p)}</code>` : esc(p))).join("");
@@ -13,7 +13,7 @@ const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { re
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 const S = {
-  lang: ["hi", "en"].includes(params.get("lang")) ? params.get("lang") : pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
+  lang: ["hi", "en"].includes(params.get("lang")) ? params.get("lang") : pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "todo", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
   projects: [], project: params.get("project"), sessions: [], session: params.get("session"),
   turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null, wireSel: null,
 };
@@ -22,7 +22,7 @@ const UI = {
   project: { hi: "Project", en: "Project" }, session: { hi: "Session", en: "Session" },
   turnsHead: { hi: "Prompts (is session ke)", en: "Prompts in this session" },
   chSoch: { hi: "Soch", en: "Thinking" }, chRead: { hi: "Padha", en: "Read" }, chEdit: { hi: "Badla", en: "Edit" }, chRun: { hi: "Chalaya", en: "Run" },
-  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, wiring: { hi: "Wiring", en: "Wiring" }, impact: { hi: "Impact", en: "Impact" }, learn: { hi: "Seekho", en: "Learn" } },
+  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, wiring: { hi: "Wiring", en: "Wiring" }, impact: { hi: "Impact", en: "Impact" }, todo: { hi: "To-do", en: "To-do" }, learn: { hi: "Seekho", en: "Learn" } },
   rec: { hi: "Recording", en: "Recording" }, now: { hi: "Abhi", en: "Now" },
   steps: { hi: "kadam", en: "steps" }, files: { hi: "files", en: "files" }, sec: { hi: "sec", en: "s" },
   tl: { hi: "Timeline", en: "Timeline" }, at: { hi: "is pal", en: "at" }, openTl: { hi: "Poori timeline kholo", en: "Open full timeline" }, closeTl: { hi: "Chhoti karo", en: "Collapse" }, follow: { hi: "Live pe wapas", en: "Back to live" },
@@ -48,7 +48,7 @@ const T = (o) => (o && typeof o === "object" ? (o[S.lang] ?? o.hi) : o ?? "");
 
 /* ---------- API ---------- */
 let DB = null;
-async function api(pathname, q = {}, method = "GET") {
+async function api(pathname, q = {}, method = "GET", body = null) {
   if (STATIC) {
     DB ??= await (await fetch(STATIC)).json();
     const k = (...a) => a.join("/");
@@ -57,15 +57,18 @@ async function api(pathname, q = {}, method = "GET") {
       case "/api/sessions": return DB.sessions[q.project] ?? [];
       case "/api/session": return DB.session[k(q.project, q.session)];
       case "/api/turn": return structuredClone(DB.turn[k(q.project, q.session, q.turn)]);
+      case "/api/export": return { text: DB.export?.[k(q.project, q.session)]?.[q.kind]?.[q.lang] ?? "" };
+      case "/api/record": return structuredClone(DB.record?.[q.project] ?? { facts: { prompts: 0, files: 0, noEvidence: 0, solid: 0, concepts: 0 }, concepts: [] });
       default: throw new Error("not available in the demo");
     }
   }
   const u = new URL(pathname, location.origin);
   u.searchParams.set("t", TOKEN);
   for (const [k, v] of Object.entries(q)) if (v != null) u.searchParams.set(k, v);
-  const r = await fetch(u, { method });
-  if (!r.ok) throw new Error(`${r.status}`);
-  return r.json();
+  const r = await fetch(u, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
+  const j = await r.json().catch(() => null);
+  if (!r.ok && !(j && "ok" in j)) throw new Error(j?.error ?? `${r.status}`);
+  return j;
 }
 
 /* ---------- helpers on events ---------- */
@@ -128,13 +131,13 @@ function rail() {
     const meta = t.status === "open"
       ? `<span class="dot"></span>${T(UI.now)}`
       : `${t.endedAt ? Math.round((Date.parse(t.endedAt) - Date.parse(t.startedAt)) / 1000) : "?"}${T(UI.sec)} · ${files} ${T(UI.files)}${t.claimsNone ? ` <span class="flag">${t.claimsNone} ${T(UI.st.none).toLowerCase()}</span>` : ""}${t.hasLesson ? ` <span class="tag ok">${S.lang === "hi" ? "lesson" : "lesson"}</span>` : ""}`;
-    return `<button class="turn" data-turn="${t.n}" aria-current="${t.n === S.turn}"><span class="n">${pad(t.n)}</span><span class="p">${esc(t.prompt)}</span><span class="meta">${meta}</span></button>`;
+    return `<button class="turn" data-turn="${t.n}" aria-current="${S.view === "turn" && t.n === S.turn}"><span class="n">${pad(t.n)}</span><span class="p">${esc(t.prompt)}</span><span class="meta">${meta}</span></button>`;
   }).join("");
 }
 
 function strip() {
   const sec = $("#strip");
-  if (!S.data) { sec.hidden = true; return; }
+  if (!S.data || S.view === "record") { sec.hidden = true; return; }
   sec.hidden = false; sec.classList.toggle("mini", !S.stripOpen);
   const dur = duration(), row = { soch: 0, read: 1, edit: 2, run: 3 };
   const tr = $("#trace");
@@ -159,7 +162,7 @@ function strip() {
 
 function head() {
   const H = $("#head");
-  if (!S.data) { H.innerHTML = ""; return; }
+  if (!S.data || S.view === "record") { H.innerHTML = ""; return; }
   const t = S.data.turn, ev = S.data.events.filter((e) => e.kind === "tool_end").length;
   H.innerHTML = `<h1 class="prompt">${esc(t.prompt)}</h1>
     <div class="prompt-meta num">${t.status === "open" ? `<span class="livetag">● ${T(UI.now)}</span> · ` : ""}${ev} ${T(UI.steps)} · ${(t.files ?? []).length} ${T(UI.files)} · ${Math.round(duration())}${T(UI.sec)}</div>
@@ -167,9 +170,9 @@ function head() {
 }
 
 function nav() {
-  if (!S.data) { $("#nav").innerHTML = ""; return; }
+  if (!S.data || S.view === "record") { $("#nav").innerHTML = ""; return; }
   if (guided()) { $("#nav").innerHTML = stepperNav(); return; }
-  const tabs = ["live", "logs", "changes", "wiring", "impact", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", learn: "t-seekho" };
+  const tabs = ["live", "logs", "changes", "wiring", "impact", "todo", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", todo: "t-todo", learn: "t-seekho" };
   $("#nav").innerHTML = `<div class="tabs" role="tablist">${tabs.map((k) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}"><svg class="i"><use href="#${ic[k]}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
 }
 
@@ -177,8 +180,9 @@ function content() {
   const C = $("#content");
   if (!TOKEN) { C.innerHTML = `<div class="empty">${code(T(UI.noToken))}</div>`; return; }
   if (!S.projects.length) { C.innerHTML = `<div class="empty">${code(T(UI.noData))}</div>`; return; }
+  if (S.view === "record") { C.innerHTML = `<div class="panel">${recordView()}</div>`; return; }
   if (!S.data) { C.innerHTML = `<div class="empty">${T(UI.noTurns)}</div>`; return; }
-  C.innerHTML = `<div class="panel">${guided() ? guidedBody() : { live, logs, changes, wiring, impact, learn }[S.tab]()}</div>`;
+  C.innerHTML = `<div class="panel">${guided() ? guidedBody() : { live, logs, changes, wiring, impact, todo: todoView, learn }[S.tab]()}</div>`;
 }
 
 function live() {
@@ -239,8 +243,9 @@ function changes() {
   const notes = (S.data.lesson?.notes ?? []).filter((n) => relPath(n.file).replace(/\\/g, "/").endsWith(f.path) || f.path.endsWith(relPath(n.file)));
   return `<div class="files">${files.map((g, i) => { const m = (t.files ?? []).find((x) => x.path === g.path) ?? {}; return `<button data-file="${i}" aria-pressed="${i === fi}">${esc(g.path.split("/").pop())}<span class="c num">+${m.add ?? "?"} −${m.del ?? "?"}</span></button>`; }).join("")}</div>
     <div class="fhead"><code>${esc(f.path)}</code><span class="badge ${f.status}">${esc(f.status)}</span><span class="muted num">+${meta.add ?? "?"} −${meta.del ?? "?"}</span></div>
-    <div class="diffwrap"><div>${f.binary ? `<div class="empty">binary</div>` : f.hunks.map((h) => `<div class="code"><div class="hh">${esc(h.head)}</div>${h.lines.map(([s, txt, n]) =>
-      `<div class="${s === "+" ? "add" : s === "-" ? "del" : ""}"><span class="ln num">${s === "-" ? "" : n}</span><span class="sg">${s === " " ? " " : s === "-" ? "−" : "+"}</span><span>${esc(txt) || " "}</span></div>`).join("")}</div>`).join("")}</div>
+    <p class="hint"><svg class="i"><use href="#i-ask"/></svg>${T(P8.askHint)}</p>
+    <div class="diffwrap"><div>${f.binary ? `<div class="empty">binary</div>` : f.hunks.map((h, hi) => `<div class="code"><div class="hh">${esc(h.head)}</div>${h.lines.map(([s, txt, n], li) => { const k = `${fi}:${hi}:${li}`, can = txt.trim().length > 0;
+      return `<div class="${s === "+" ? "add" : s === "-" ? "del" : ""} ${can ? "line" : ""} ${S.ask === k ? "asked" : ""}" ${can ? `data-ask="${k}" data-path="${esc(f.path)}" tabindex="0"` : ""}><span class="ln num">${s === "-" ? "" : n}</span><span class="sg">${s === " " ? " " : s === "-" ? "−" : "+"}</span><span>${esc(txt) || " "}</span>${can ? `<span class="askbtn" aria-hidden="true">?</span>` : ""}</div>${askBox(k)}`; }).join("")}</div>`).join("")}</div>
     <div class="notes">${notes.length ? notes.map((n) => `<div class="note"><b>${S.data.lesson.level === "dev" ? T(UI.devNote) : T(UI.plain)}</b>${code(n.text)}</div>`).join("") : `<div class="note muted">${S.data.lesson ? "" : (S.lang === "hi" ? "Lesson banne ke baad yahan har badlaav ka saral samjhaana aayega (Seekho tab)." : "Once the lesson is written, plain-words notes appear here (Learn tab).")}</div>`}</div></div>`;
 }
 
@@ -442,7 +447,7 @@ function securityCard() {
 
 /* ---------- guided lesson (Phase 7): steps, health, asks, claims, glossary ---------- */
 const G = {
-  steps: [{ hi: "Kya hua", en: "What happened" }, { hi: "Kya badla", en: "What changed" }, { hi: "Dhyan do", en: "Watch out" }, { hi: "Quiz", en: "Quiz" }],
+  steps: [{ hi: "Kya hua", en: "What happened" }, { hi: "Kya badla", en: "What changed" }, { hi: "Dhyan do", en: "Watch out" }, { hi: "Ab kya karo", en: "To-do" }, { hi: "Quiz", en: "Quiz" }],
   back: { hi: "Peeche", en: "Back" }, next: { hi: "Aage", en: "Next" }, finish: { hi: "Lesson poora", en: "Finish lesson" }, doneMsg: { hi: "Shabaash! Ye lesson poora ho gaya.", en: "Nice! This lesson is done." },
   timelineChip: { hi: "Timeline pe", en: "On the timeline" }, backToLesson: { hi: "Lesson pe wapas", en: "Back to the lesson" },
   liveNow: { hi: "Abhi live", en: "Live now" }, lessonChip: { hi: "Lesson", en: "Lesson" },
@@ -463,7 +468,7 @@ const CLAIM_ST = { backed: ["ok", "i-ok"], unverified: ["unk", "i-unk"], none: [
 const doneKey = () => `${S.session}/${S.turn}`;
 const loadDone = () => { try { return JSON.parse(localStorage.getItem("vx-done") || "{}"); } catch { return {}; } };
 S.done = loadDone();
-S.step = Math.max(0, Math.min(3, Number(params.get("step")) || 0)); S.bView = null; S.claimsOpen = false;
+S.step = Math.max(0, Math.min(4, Number(params.get("step")) || 0)); S.bView = null; S.claimsOpen = false;
 if (["beg", "dev"].includes(params.get("level"))) S.level = params.get("level");
 
 /* Glossary: everyday words built in, plus the lesson's own concepts (those win). */
@@ -522,7 +527,7 @@ function glossary() {
     const name = String(c.name ?? "").replace(/[`()]/g, "").trim();
     if (name && name.length <= 40 && !/\s{2,}/.test(name)) map.set(name.toLowerCase(), { word: name, def: String(c.explain ?? "").replace(/`/g, "") });
   }
-  const words = [...map.values()].map((m) => m.word).sort((a, b) => b.length - a.length).map((w) => w.replace(/[.*+?^${}()|[\]\\/]/g, "\\function learn() {"));
+  const words = [...map.values()].map((m) => m.word).sort((a, b) => b.length - a.length).map((w) => w.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&"));
   glossCache = { key, map, re: words.length ? new RegExp(`(^|[^A-Za-z0-9_$/.-])(${words.join("|")})(?![A-Za-z0-9_$])`, "gi") : null };
   return glossCache;
 }
@@ -643,10 +648,10 @@ function stepQuiz() {
     ${l.concepts?.length ? `<section class="card"><h5>${T(G.conceptsHead)}</h5><div class="concepts">${l.concepts.map((c) => `<details><summary><svg class="i"><use href="#i-chev"/></svg><code>${esc(c.name)}</code></summary><div>${gl(c.explain)}</div></details>`).join("")}</div></section>` : ""}
     ${l.quiz?.length ? `<section class="card quiz"><h5>${T(UI.quiz)}</h5>${l.quiz.map((q, i) => { const ans = qs[i]; return `<div class="q"><p>${i + 1}. ${code(q.q)}</p><div class="opts">${q.options.map((o, j) => `<button data-q="${i}" data-o="${j}" class="${ans == null ? "" : j === q.answer ? "right" : j === ans ? "wrong" : ""}" ${ans != null ? "disabled" : ""}>${code(o)}</button>`).join("")}</div>${ans != null ? `<div class="qexp">${gl(q.explain)}</div>` : ""}</div>`; }).join("")}
       <div class="score num">${S.lang === "hi" ? "Sahi" : "Correct"}: ${right} / ${l.quiz.length}</div></section>` : ""}
-    ${l.manualTest?.steps?.length ? `<section class="card manual"><h5>${T(UI.manual)}</h5><ol>${l.manualTest.steps.map((s) => `<li>${gl(s)}</li>`).join("")}</ol><div class="expect"><b>${T(UI.expect)}</b><br>${gl(l.manualTest.expect)}</div></section>` : ""}
+    ${explainBack()}
   </article>`;
 }
-const STEPS = [stepWhat, () => changes(), stepWatch, stepQuiz];
+const STEPS = [stepWhat, () => changes(), stepWatch, () => todoView(), stepQuiz];
 const guided = () => S.level === "beg";
 const lessonReady = () => S.data?.turn.status !== "open" && !!S.data?.lesson;
 
@@ -673,6 +678,153 @@ function guidedBody() {
     ${last ? `<button class="primary" id="finishBtn">${done ? `<svg class="i"><use href="#i-ok"/></svg> ${T(G.doneMsg)}` : T(G.finish)}</button>` : `<button class="primary" data-go="${S.step + 1}">${T(G.next)}: ${T(G.steps[S.step + 1])} →</button>`}</div>`;
 }
 
+/* ---------- Phase 8: to-do, chat, ask a line, explain back, learning record, export ---------- */
+const P8 = {
+  todoHead: { hi: "Ab kya karo", en: "What to do next" }, todoDone: { hi: "ho gaye", en: "done" },
+  todoNone: { hi: "Record mein kuch khula nahi hai. Bas neeche wala test khud karke dekh lo.", en: "Nothing open in the record. Just try the test below yourself." },
+  todoWait: { hi: "To-do list prompt khatam hone pe banegi.", en: "The to-do list is made when the prompt ends." },
+  todoFrom: { tests: { hi: "tests", en: "tests" }, claim: { hi: "AI ka daawa", en: "AI claim" }, check: { hi: "khud dekho", en: "check yourself" }, ask: { hi: "tumhari maang", en: "your ask" }, impact: { hi: "impact", en: "impact" }, security: { hi: "security", en: "security" } },
+  copyFix: { hi: "Fix prompt copy karo", en: "Copy fix prompt" },
+  chatBtn: { hi: "Session se poochho", en: "Ask this session" }, chatHead: { hi: "Is session ke baare mein poochho", en: "Ask about this session" },
+  chatPh: { hi: "Jaise: login mein kya badla?", en: "e.g. what changed in login?" }, chatSend: { hi: "Bhejo", en: "Send" },
+  chatNote: { hi: "Jawab tumhare apne `claude` se aata hai, sirf is session ke record se (lagbhag 20 second, thodi plan usage).", en: "Answers come from your own `claude`, using only this session's record (about 20 seconds, a little plan usage)." },
+  chatThinking: { hi: "Teacher record padh raha hai…", en: "The teacher is reading the record…" },
+  chatDemo: { hi: "Demo mein sawaal nahi poochh sakte: iske liye tool apne computer pe chalana hota hai.", en: "Questions don't work in the demo: they need the tool running on your computer." },
+  chatQs: [
+    { hi: "Is prompt mein kya badla?", en: "What changed in this prompt?" },
+    { hi: "Isse kya toot sakta hai?", en: "What could this break?" },
+    { hi: "Kya tests chale?", en: "Did the tests run?" },
+    { hi: "Kya ye code safe hai?", en: "Is this code safe?" },
+  ],
+  askHint: { hi: "Kisi bhi line pe click karke poochho: ye kya hai?", en: "Click any line to ask: what is this?" },
+  askQ: { hi: "Ye line kya karti hai?", en: "What does this line do?" },
+  ebHead: { hi: "Apne shabdon mein samjhao", en: "Explain it in your own words" },
+  ebPh: { hi: "Is prompt mein kya badla aur kyun? 2-3 line likho…", en: "What changed in this prompt, and why? Write 2-3 lines…" },
+  ebBtn: { hi: "Check karo", en: "Check it" }, ebBusy: { hi: "Teacher check kar raha hai…", en: "The teacher is checking…" },
+  ebV: { good: { hi: "Sahi samjhe!", en: "You got it!" }, partly: { hi: "Aadha sahi", en: "Partly right" }, off: { hi: "Dobara dekho", en: "Have another look" } },
+  ebMissed: { hi: "Ye reh gaya:", en: "You left out:" },
+  record: { hi: "Seekhne ka record aur export", en: "Learning record & export" },
+  progHead: { hi: "Mera seekhne ka record", en: "My learning record" },
+  progLede: { hi: "Har lesson ke concepts yahan jama hote hain. Quiz ke jawab se pata chalta hai kya pakka hua.", en: "Concepts from every lesson collect here. Your quiz answers decide what is solid." },
+  fPrompts: { hi: "prompts", en: "prompts" }, fFiles: { hi: "files badli", en: "files changed" }, fFlags: { hi: "daawe bina saboot", en: "claims without evidence" }, fSolid: { hi: "concepts pakke", en: "concepts solid" },
+  st: { solid: { hi: "Pakka", en: "Solid" }, weak: { hi: "Revision chahiye", en: "Needs revision" }, new: { hi: "Abhi quiz nahi diya", en: "No quiz yet" } },
+  revise: { hi: "Revision quiz shuru karo", en: "Start a revision quiz" },
+  noConcepts: { hi: "Abhi koi lesson nahi bana. Lesson banne ke baad concepts yahan aayenge.", en: "No lessons yet. Concepts appear here once lessons are written." },
+  exportHead: { hi: "Export karo", en: "Export" },
+  exportLede: { hi: "Is session ka tayyar text: PR mein daalo, commit karo, ya apne notes mein rakho. Ye record se banta hai, AI se nahi.", en: "Ready-made text from this session: paste it into a PR, a commit or your notes. It is built from the record, not by the AI." },
+  ex: { pr: { hi: "PR description", en: "PR description" }, commit: { hi: "Commit message", en: "Commit message" }, note: { hi: "Aaj ka note", en: "Today's note" } },
+};
+const loadJ = (k) => { try { return JSON.parse(localStorage.getItem(k) || "{}"); } catch { return {}; } };
+const saveJ = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private mode */ } };
+S.todoDone = loadJ("vx-todo"); S.view = "turn"; S.chats = {}; S.chatOpen = false; S.chatBusy = false;
+S.ask = null; S.askAns = {}; S.eb = {}; S.record = null; S.exp = null; S.expText = "";
+
+function todoView() {
+  const t = S.data.turn, items = S.data.todo ?? [];
+  if (t.status === "open") return `<div class="empty">${T(P8.todoWait)}</div>`;
+  const key = (it) => `${doneKey()}:${it.id}`;
+  const done = items.filter((it) => S.todoDone[key(it)]).length;
+  const m = S.data.lesson?.manualTest;
+  return `<section class="card todo"><div class="todohead"><h5>${T(P8.todoHead)}</h5>${items.length ? `<span class="tcount num">${done}/${items.length} ${T(P8.todoDone)}</span>` : ""}</div>
+    ${items.length ? `<span class="tbar"><i style="width:${(done / items.length) * 100}%"></i></span>` : ""}
+    <ul class="tlist">${items.length ? items.map((it) => { const on = !!S.todoDone[key(it)], title = it.kind === "security" ? T(RULE[it.rule]?.t ?? it.rule) : T(it.t);
+      return `<li class="${on ? "on" : ""}"><button class="tcheck" data-todo="${esc(key(it))}" aria-pressed="${on}" aria-label="${esc(title)}">${on ? '<svg class="i"><use href="#i-ok"/></svg>' : ""}</button>
+        <div><span class="badge">${T(P8.todoFrom[it.kind])}</span><br><b>${gl(title)}</b>${it.d ? `<p>${code(T(it.d))}</p>` : ""}
+        ${it.prompt ? `<button class="ghost sm" data-copy="td:${esc(it.id)}">${S.copied === `td:${it.id}` ? `<svg class="i"><use href="#i-ok"/></svg>${T(UI.copied)}` : `<svg class="i"><use href="#i-copy"/></svg>${T(P8.copyFix)}`}</button>` : ""}</div></li>`; }).join("")
+      : `<li class="none">${T(P8.todoNone)}</li>`}</ul></section>
+    ${m?.steps?.length ? `<section class="card manual" style="margin-top:14px"><h5>${T(UI.manual)}</h5><ol>${m.steps.map((s) => `<li>${gl(s)}</li>`).join("")}</ol><div class="expect"><b>${T(UI.expect)}</b><br>${gl(m.expect)}</div></section>` : ""}`;
+}
+
+/* explain it back (inside the Quiz step) */
+function explainBack() {
+  const e = S.eb[doneKey()] ?? {};
+  return `<section class="card explain-back"><h5>${T(P8.ebHead)}</h5>
+    ${STATIC ? `<p class="muted">${T(P8.chatDemo)}</p>` : `<textarea id="eb" placeholder="${esc(T(P8.ebPh))}">${esc(e.text ?? "")}</textarea>
+    <button class="primary" id="ebBtn" ${e.busy || (e.text ?? "").trim().length < 10 ? "disabled" : ""}>${e.busy ? `<span class="spin"></span>${T(P8.ebBusy)}` : T(P8.ebBtn)}</button>
+    ${e.res ? (e.res.ok ? `<div class="ebres ${esc(e.res.verdict)}"><b>${T(P8.ebV[e.res.verdict])}</b><p>${code(e.res.feedback)}</p>${e.res.missed?.length ? `<p><b>${T(P8.ebMissed)}</b></p><ul>${e.res.missed.map((x) => `<li>${code(x)}</li>`).join("")}</ul>` : ""}</div>` : `<p class="err">${esc(e.res.error)}</p>`) : ""}`}
+  </section>`;
+}
+
+/* ask about a line of the diff */
+function askBox(k) {
+  const a = S.askAns[k];
+  if (S.ask !== k || !a) return "";
+  return `<div class="askans"><div class="askq"><svg class="i"><use href="#i-ask"/></svg><b>${T(P8.askQ)}</b></div>
+    <p>${a.busy ? `<span class="spin dark"></span> ${T(P8.chatThinking)}` : a.error ? `<span class="err">${esc(a.error)}</span>` : code(a.text)}</p></div>`;
+}
+async function askLine(k, file, text) {
+  if (S.ask === k) { S.ask = null; content(); return; }
+  S.ask = k;
+  if (!S.askAns[k] || S.askAns[k].error) {
+    if (STATIC) S.askAns[k] = { error: T(P8.chatDemo) };
+    else {
+      S.askAns[k] = { busy: true }; content();
+      try {
+        const r = await api("/api/chat", { project: S.project, session: S.session }, "POST", { question: T(P8.askQ), lang: S.lang, turn: S.turn, line: { file, text } });
+        S.askAns[k] = r.ok ? { text: r.answer } : { error: r.error };
+      } catch (err) { S.askAns[k] = { error: String(err.message) }; }
+    }
+  }
+  content();
+}
+
+/* chat */
+function chatRender() {
+  const fab = $("#chatFab"), p = $("#chatPanel");
+  const show = !!S.data && S.view === "turn";
+  fab.hidden = !show || S.chatOpen; p.hidden = !show || !S.chatOpen;
+  fab.querySelector("span").textContent = T(P8.chatBtn);
+  if (p.hidden) return;
+  const log = S.chats[S.session] ?? [];
+  p.innerHTML = `<div class="chathead"><b>${T(P8.chatHead)}</b><button class="iconbtn" id="chatClose" aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></div>
+    <div class="chatlog" id="chatLog">${log.length ? log.map((m) => `<div class="msg ${m.who} ${m.err ? "err" : ""}">${m.who === "ai" ? code(m.t) : esc(m.t)}</div>`).join("") : `<p class="muted">${code(T(STATIC ? P8.chatDemo : P8.chatNote))}</p>`}
+      ${S.chatBusy ? `<div class="msg ai"><span class="spin dark"></span> ${T(P8.chatThinking)}</div>` : ""}</div>
+    ${STATIC ? "" : `<div class="chips">${P8.chatQs.map((c, i) => `<button class="chip" data-chatq="${i}" ${S.chatBusy ? "disabled" : ""}>${esc(T(c))}</button>`).join("")}</div>
+    <form class="chatform" id="chatForm"><input id="chatIn" placeholder="${esc(T(P8.chatPh))}" aria-label="${esc(T(P8.chatPh))}" ${S.chatBusy ? "disabled" : ""}><button class="primary sm" type="submit" ${S.chatBusy ? "disabled" : ""}>${T(P8.chatSend)}</button></form>`}`;
+  const el = $("#chatLog"); if (el) el.scrollTop = el.scrollHeight;
+}
+async function chatAsk(q) {
+  if (S.chatBusy || STATIC) return;
+  const sid = S.session, log = (S.chats[sid] ??= []);
+  const history = log.filter((m) => !m.err).slice(-6);
+  log.push({ who: "me", t: q }); S.chatBusy = true; chatRender();
+  try {
+    const r = await api("/api/chat", { project: S.project, session: sid }, "POST", { question: q, history, lang: S.lang, turn: S.turn });
+    log.push(r.ok ? { who: "ai", t: r.answer } : { who: "ai", t: r.error, err: true });
+  } catch (err) { log.push({ who: "ai", t: String(err.message), err: true }); }
+  S.chatBusy = false; chatRender();
+  setTimeout(() => $("#chatIn")?.focus(), 30);
+}
+
+/* learning record + export */
+async function openRecord() {
+  S.view = "record"; S.exp = null; S.expText = ""; all();
+  try { S.record = await api("/api/record", { project: S.project }); } catch (err) { S.record = { error: String(err.message) }; }
+  if (S.view === "record") content();
+}
+function recordView() {
+  const r = S.record;
+  if (!r) return `<div class="empty"><span class="spin dark"></span></div>`;
+  if (r.error) return `<div class="empty">${esc(r.error)}</div>`;
+  const f = r.facts, cs = r.concepts;
+  const weak = cs.find((c) => c.status === "weak") ?? cs.find((c) => c.status === "new");
+  return `<h1 class="prompt">${T(P8.progHead)}</h1><p class="lede muted">${T(P8.progLede)}</p>
+    <div class="facts"><div><b>${f.prompts}</b><span>${T(P8.fPrompts)}</span></div><div><b>${f.files}</b><span>${T(P8.fFiles)}</span></div><div><b>${f.noEvidence}</b><span>${T(P8.fFlags)}</span></div><div><b>${f.solid}/${f.concepts}</b><span>${T(P8.fSolid)}</span></div></div>
+    <section class="card prog">${cs.length ? `<div class="clist">${cs.map((c) => `<span class="cchip ${esc(c.status)}" title="${esc(c.explain)}"><code>${esc(c.name)}</code><span>${T(P8.st[c.status])}</span><small>${pad(c.turn)}</small></span>`).join("")}</div>
+      ${weak && !STATIC ? `<button class="primary" data-revise="${esc(weak.sessionId)}/${weak.turn}"><svg class="i"><use href="#t-seekho"/></svg>${T(P8.revise)}</button>` : ""}` : `<p class="muted">${T(P8.noConcepts)}</p>`}</section>
+    <h2 class="sechead">${T(P8.exportHead)}</h2><p class="muted">${T(P8.exportLede)}</p>
+    <div class="exbtns">${["pr", "commit", "note"].map((k) => `<button class="${S.exp === k ? "primary" : "ghost"}" data-exp="${k}">${T(P8.ex[k])}</button>`).join("")}</div>
+    ${S.exp ? `<div class="exbox"><pre>${esc(S.expText)}</pre><button class="primary sm" data-copy="exp">${S.copied === "exp" ? `<svg class="i"><use href="#i-ok"/></svg>${T(UI.copied)}` : `<svg class="i"><use href="#i-copy"/></svg>${T(UI.copy)}`}</button></div>` : ""}`;
+}
+async function showExport(kind) {
+  if (S.exp === kind) { S.exp = null; content(); return; }
+  S.exp = kind; S.expText = "…"; content();
+  try { S.expText = (await api("/api/export", { project: S.project, session: S.session, kind, lang: S.lang })).text; } catch (err) { S.expText = String(err.message); }
+  content();
+}
+
+UI.record = P8.record;
+
 function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
@@ -687,7 +839,7 @@ function learn() {
     <p class="muted" style="font-size:13px">${T(UI.lessonMeta)}: ${esc(l.teacher)} · ${esc(l.level)}/${esc(l.lang)} · ${esc(new Date(l.createdAt).toLocaleString())}</p>`;
 }
 
-function all() { labels(); pickers(); rail(); head(); strip(); nav(); content(); }
+function all() { labels(); pickers(); rail(); head(); strip(); nav(); content(); chatRender(); $("#recBtn").setAttribute("aria-current", S.view === "record"); }
 
 /* ---------- data flow ---------- */
 let stream = null;
@@ -712,6 +864,7 @@ async function loadSession() {
 async function loadTurn() {
   if (!S.turn) { S.data = null; all(); return; }
   S.data = await api("/api/turn", { project: S.project, session: S.session, turn: S.turn });
+  if (!STATIC && S.data?.quiz) S.quiz[`${S.session}/${S.turn}`] = { ...S.data.quiz };
   if (S.follow || S.cur > duration()) S.cur = duration();
   all();
 }
@@ -742,7 +895,27 @@ function openStream() {
 
 /* ---------- events ---------- */
 document.addEventListener("click", async (e) => {
+  const line = e.target.closest("[data-ask]");
+  if (line && !e.target.closest("button,a")) { await askLine(line.dataset.ask, line.dataset.path ?? "", line.querySelector("span:nth-child(3)")?.textContent ?? ""); return; }
   const b = e.target.closest("button,a"); if (!b) return;
+  if (b.id === "recBtn") { await openRecord(); return; }
+  if (b.id === "chatFab") { S.chatOpen = true; chatRender(); setTimeout(() => $("#chatIn")?.focus(), 30); return; }
+  if (b.id === "chatClose") { S.chatOpen = false; chatRender(); return; }
+  if (b.dataset.chatq) { await chatAsk(T(P8.chatQs[+b.dataset.chatq])); return; }
+  if (b.dataset.todo) { S.todoDone[b.dataset.todo] = !S.todoDone[b.dataset.todo]; if (!S.todoDone[b.dataset.todo]) delete S.todoDone[b.dataset.todo]; saveJ("vx-todo", S.todoDone); content(); return; }
+  if (b.dataset.exp) { await showExport(b.dataset.exp); return; }
+  if (b.dataset.revise) {
+    const [sid, n] = b.dataset.revise.split("/");
+    try { await api("/api/quiz", { project: S.project, session: sid, turn: n }, "POST", { reset: true }); } catch { /* the step still opens */ }
+    S.view = "turn"; S.level = "beg"; S.step = 4; S.bView = null;
+    if (sid !== S.session) { S.session = sid; S.sessions = await api("/api/sessions", { project: S.project }); const r = await api("/api/session", { project: S.project, session: sid }); S.turns = r.turns; openStream(); }
+    S.turn = +n; S.follow = false; await loadTurn(); return;
+  }
+  if (b.id === "ebBtn") {
+    const k = doneKey(), e2 = (S.eb[k] ??= {}); e2.busy = true; e2.res = null; content();
+    try { e2.res = await api("/api/explain-back", { project: S.project, session: S.session, turn: S.turn }, "POST", { text: e2.text, lang: S.lang }); } catch (err) { e2.res = { ok: false, error: String(err.message) }; }
+    e2.busy = false; content(); return;
+  }
   if (b.dataset.lang) { S.lang = b.dataset.lang; save("vx-lang", S.lang); all(); }
   else if (b.dataset.level) { S.level = b.dataset.level; save("vx-level", S.level); S.bView = null; all(); }
   else if (b.dataset.step || b.dataset.go) { S.step = +(b.dataset.step ?? b.dataset.go); S.bView = null; nav(); content(); $("#nav").scrollIntoView({ block: "start", behavior: "smooth" }); }
@@ -750,15 +923,19 @@ document.addEventListener("click", async (e) => {
   else if (b.id === "claimsToggle") { S.claimsOpen = !S.claimsOpen; head(); }
   else if (b.id === "backLesson") { S.bView = null; nav(); content(); }
   else if (b.id === "themeBtn") { const r = document.documentElement; r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark"; save("vx-theme", r.dataset.theme); }
-  else if (b.dataset.turn) { S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; S.wireSel = null; S.step = 0; S.bView = null; S.claimsOpen = false; await loadTurn(); }
+  else if (b.dataset.turn) { S.view = "turn"; S.ask = null; S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; S.wireSel = null; S.step = 0; S.bView = null; S.claimsOpen = false; await loadTurn(); }
   else if (b.dataset.tab) { S.tab = b.dataset.tab; nav(); content(); }
   else if (b.dataset.file) { S.file = +b.dataset.file; content(); }
   else if (b.id === "tlToggle") { S.stripOpen = !S.stripOpen; strip(); }
   else if (b.id === "followBtn") { S.follow = true; S.cur = duration(); strip(); content(); }
   else if (b.dataset.jump) { S.cur = +b.dataset.jump; S.follow = false; S.stripOpen = true; if (guided()) S.bView = "live"; else S.tab = "live"; all(); }
-  else if (b.dataset.q) { (S.quiz[`${S.session}/${S.turn}`] ??= {})[+b.dataset.q] = +b.dataset.o; content(); }
+  else if (b.dataset.q) {
+    const qs = (S.quiz[`${S.session}/${S.turn}`] ??= {}); if (b.dataset.q in qs) return;
+    qs[+b.dataset.q] = +b.dataset.o; content();
+    if (!STATIC) api("/api/quiz", { project: S.project, session: S.session, turn: S.turn }, "POST", { question: +b.dataset.q, answer: +b.dataset.o }).catch(() => {});
+  }
   else if (b.dataset.copy) {
-    const k = b.dataset.copy, text = k === "claimfix" ? claimFixPrompt(S.data.lesson.claims.find((c) => c.status === "none")) : k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k.slice(2)]?.prompt;
+    const k = b.dataset.copy, text = k === "exp" ? S.expText : k.startsWith("td:") ? T((S.data.todo ?? []).find((it) => it.id === k.slice(3))?.prompt) : k === "claimfix" ? claimFixPrompt(S.data.lesson.claims.find((c) => c.status === "none")) : k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k.slice(2)]?.prompt;
     try { await navigator.clipboard.writeText(text ?? ""); } catch { /* clipboard blocked */ }
     S.copied = k; head(); content(); setTimeout(() => { S.copied = null; head(); content(); }, 1600);
   }
@@ -775,9 +952,19 @@ function pickNode(e) {
 }
 document.addEventListener("click", (e) => { if (S.tab === "wiring") pickNode(e); });
 document.addEventListener("keydown", (e) => { if (S.tab === "wiring" && (e.key === "Enter" || e.key === " ") && e.target.closest?.("[data-node]")) { e.preventDefault(); pickNode(e); } });
+document.addEventListener("input", (e) => {
+  if (e.target.id === "eb") { const x = (S.eb[doneKey()] ??= {}); x.text = e.target.value; const btn = $("#ebBtn"); if (btn && !x.busy) btn.disabled = x.text.trim().length < 10; }
+});
+document.addEventListener("submit", (e) => {
+  if (e.target.id === "chatForm") { e.preventDefault(); const v = $("#chatIn").value.trim(); if (v) chatAsk(v); }
+});
+document.addEventListener("keydown", (e) => {
+  const line = e.target.closest?.("[data-ask]");
+  if (line && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); line.click(); }
+});
 document.addEventListener("change", async (e) => {
-  if (e.target.id === "projectSel") { S.project = e.target.value; S.session = null; await loadSessions(); }
-  if (e.target.id === "sessionSel") { S.session = e.target.value; await loadSession(); }
+  if (e.target.id === "projectSel") { S.project = e.target.value; S.session = null; S.view = "turn"; await loadSessions(); }
+  if (e.target.id === "sessionSel") { S.session = e.target.value; S.view = "turn"; await loadSession(); }
 });
 (function scrub() {
   const tr = $("#trace"); let drag = false;

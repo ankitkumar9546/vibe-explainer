@@ -107,6 +107,13 @@ Original design notes:
 - **Glossary:** about 45 everyday words in Hinglish and English, plus the lesson's own `concepts` (which win). The first use of each term in a block gets a dotted underline and a tooltip. Code spans are never touched.
 - URL helpers for screenshots: `level=beg|dev`, `step=0..3`, `lang=hi|en`.
 
+**Phase 8 (built 11-21): to-do, chat, learning record, export.**
+- `core/src/todo.js` `buildTodo()`: items only from evidence. Sources: a failed last test run; code changed with no test run; claims with status `none` (with a fix prompt) or `unverified` (check it yourself); asks marked `no`/`part`; impact risk 2+ (the lesson's, or the analysis when there is no lesson); and medium/high security findings. `/api/turn` returns it as `todo`. Ticks are kept in the browser (localStorage).
+- `core/src/export.js` `buildExport(kind)`: PR description, commit message or day note for a session, built from the record with no model call. `GET /api/export`, and `vibe-explainer export --kind pr|commit|note`.
+- `core/src/learning.js`: quiz answers in `turns/<n>/quiz.json` (`POST /api/quiz`; the first answer counts; `reset` keeps a short history) and `learningRecord()`, which gives concepts from every lesson in the project with a status: solid (all answers right), weak (any wrong) or new. `GET /api/record`.
+- `core/src/teacher/chat.js`: `sessionRecord()` is a masked, budgeted text of the whole session (prompts, steps, files, analysis, lessons, plus the diff of the turn in focus). `askSession()` answers "Ask this session" and "what does this line do?" from it (`POST /api/chat`). `checkExplanation()` grades the learner's own words as good, partly or off, with what they missed (`POST /api/explain-back`). One question per session at a time. The answers use the user's own `claude`.
+- Console: To-do is step 4 of the guided lesson and a Developer tab; the chat is a floating panel; any diff line can be clicked to ask about it; the Quiz step has the explain-back box; the rail has "Learning record & export". In the static demo, questions are switched off with a note, and the record and exports come from `demo-data.json`.
+
 **Change found in the real check (11-20):** on Windows, Claude Code ends its child processes when it exits, which cut a detached `finish-turn` short. So the "after" snapshot and the diff now run **synchronously in the Stop hook** (0.39 s measured). Auto lessons are detached only on macOS and Linux. On Windows the open console teaches them.
 
 Original design notes:

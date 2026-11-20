@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Store, projectIdFor, readJson, ensureAnalysis } from "../packages/core/src/index.js";
+import { Store, projectIdFor, readJson, ensureAnalysis, buildTodo, buildExport, learningRecord } from "../packages/core/src/index.js";
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : d; };
 const home = path.resolve(arg("home", path.join(os.homedir(), ".vibe-explainer")));
@@ -30,12 +30,12 @@ const scrub = (text) => {
 };
 const clean = (obj) => JSON.parse(scrub(JSON.stringify(obj)));
 
-const db = { projects: [], sessions: {}, session: {}, turn: {} };
+const db = { projects: [], sessions: {}, session: {}, turn: {}, export: {}, record: {} };
 const sessions = store.listSessions(pid).filter((s) => store.currentTurn(pid, s.id) > 0);
 db.projects.push({ id: pid, name: "demo-project", path: "~/demo-project", createdAt: meta.createdAt, sessions: sessions.length });
 db.sessions[pid] = sessions.map((s) => clean({ ...s, transcriptPath: undefined, cwd: "~/demo-project", turns: store.currentTurn(pid, s.id) }));
 for (const s of sessions) {
-  const turns = [];
+  const turns = [], full = [];
   for (let n = 1; n <= store.currentTurn(pid, s.id); n++) {
     const dir = store.turnDir(pid, s.id, n);
     const t = readJson(path.join(dir, "turn.json"));
@@ -45,11 +45,17 @@ for (const s of sessions) {
     const analysis = t.after ? await ensureAnalysis(store, { projectId: pid, sessionId: s.id, turn: n }, { online: true }) : null;
     const events = store.readEvents(pid, s.id).filter((e) => e.turn === n).map((e) => ({ ...e, transcriptPath: undefined }));
     turns.push({ ...t, hasLesson: !!lesson, lessonTitle: lesson?.title ?? null, claimsNone: lesson ? lesson.claims.filter((c) => c.status === "none").length : 0 });
-    db.turn[`${pid}/${s.id}/${n}`] = clean({ turn: t, events, diff, analysis, lesson });
+    // quiz answers stay out of the demo: every visitor starts fresh
+    db.turn[`${pid}/${s.id}/${n}`] = clean({ turn: t, events, diff, analysis, lesson, quiz: {}, todo: buildTodo({ turn: t, events, lesson, analysis }) });
+    full.push({ turn: t, events, lesson, analysis });
   }
+  db.export[`${pid}/${s.id}`] = clean(Object.fromEntries(["pr", "commit", "note"].map((k) => [k, { hi: buildExport(k, { project: "demo-project", turns: full }, "hi"), en: buildExport(k, { project: "demo-project", turns: full }, "en") }])));
   db.session[`${pid}/${s.id}`] = clean({ session: { ...s, transcriptPath: undefined, cwd: "~/demo-project" }, turns });
 }
 
+// the record without anyone's quiz answers
+const rec = learningRecord(store, pid);
+db.record[pid] = clean({ ...rec, facts: { ...rec.facts, solid: 0 }, concepts: rec.concepts.map((c) => ({ ...c, status: "new" })) });
 const json = JSON.stringify(db);
 const leaks = [userName, userHome, userHome.replace(/\\/g, "/")].filter((x) => x && x.length > 2 && json.toLowerCase().includes(x.toLowerCase()));
 if (leaks.length) { console.error(`refusing to build: personal data still present (${leaks.join(", ")})`); process.exit(1); }

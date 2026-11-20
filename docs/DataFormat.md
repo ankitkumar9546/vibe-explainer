@@ -78,6 +78,15 @@ Rules:
 
 **As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher, mode: manual|auto, level: beg|dev, lang: hi|en, model, registry: on|off }`.
 
+## 3b. Quiz answers (`turns/<n>/quiz.json`), Phase 8
+
+```json
+{ "v": 1, "answers": { "0": 1, "1": 0 }, "history": [{ "answers": { "0": 2 }, "until": "…" }], "updatedAt": "…" }
+```
+
+- `answers`: question index → chosen option. The first answer to a question counts.
+- A revision quiz moves the answers into `history` (up to 10 entries) and starts again.
+
 ## 4. Analysis (`analysis.json`), written by the analyzer (Phase 6)
 
 ```json

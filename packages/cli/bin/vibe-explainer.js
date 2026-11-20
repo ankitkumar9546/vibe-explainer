@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer, shadowDir, ensureAnalysis } from "../../core/src/index.js";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer, shadowDir, ensureAnalysis, buildExport } from "../../core/src/index.js";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -57,6 +57,8 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
         [--turn N] [--session ID] [--level beg|dev] [--lang hi|en]
   vibe-explainer analyze [dir]       callers, packages and security notes for the latest prompt
         [--turn N] [--session ID] [--json] [--offline]
+  vibe-explainer export [dir] --kind pr|commit|note [--session ID] [--lang hi|en]
+                                     ready-made text from the newest session
   vibe-explainer config [set KEY VALUE]   teacher, mode (manual|auto), level, lang, model, registry (on|off)
   vibe-explainer open [dir] [--port N] [--no-browser] [--detach]   open the console in your browser
   vibe-explainer hook                (used by Claude Code; reads a hook payload on stdin)
@@ -145,6 +147,24 @@ switch (cmd) {
     if (!a.symbols.length && !a.packages.length && !a.security.length) console.log("  Nothing to report: no functions, packages or risky patterns changed.");
     break;
   }
+  case "export": {
+    const store = new Store();
+    const dir = dirArg(), projectId = projectIdFor(dir);
+    const sessions = store.listSessions(projectId);
+    // The newest session with a real prompt in it (running /vibe-explainer:… opens a session of its own).
+    const real = (x) => { for (let n = 1; n <= store.currentTurn(projectId, x.id); n++) { const t = readJson(path.join(store.turnDir(projectId, x.id, n), "turn.json")); if (t && !String(t.prompt ?? "").startsWith("/vibe-explainer")) return true; } return false; };
+    const session = flagOf("session") ? sessions.find((x) => x.id === flagOf("session")) : sessions.slice().reverse().find(real);
+    if (!session) { console.error(`Nothing recorded yet for ${dir}.`); process.exit(1); }
+    const turns = [];
+    for (let n = 1; n <= store.currentTurn(projectId, session.id); n++) {
+      const tdir = store.turnDir(projectId, session.id, n);
+      const turn = readJson(path.join(tdir, "turn.json")); if (!turn) continue;
+      turns.push({ turn, events: store.readEvents(projectId, session.id).filter((e) => e.turn === n), lesson: readJson(path.join(tdir, "lesson.json")), analysis: readJson(path.join(tdir, "analysis.json")) });
+    }
+    const kind = ["pr", "commit", "note"].includes(flagOf("kind")) ? flagOf("kind") : "pr";
+    process.stdout.write(buildExport(kind, { project: path.basename(dir), turns }, flagOf("lang") ?? loadConfig(store.home).lang));
+    break;
+  }
   case "baseline": {
     try {
       const dir = path.resolve(args[0] ?? process.cwd());
@@ -201,6 +221,7 @@ switch (cmd) {
       staticDir, port: Number(flag("port")) || 4321,
       onExplain: (ids, o) => teachTurn(store, ids, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: o.level, lang: o.lang, online: loadConfig(store.home).registry === "on" }),
       online: () => loadConfig(store.home).registry === "on",
+      makeTeacher: () => claudeTeacher({ home: store.home, model: loadConfig(store.home).model || undefined, timeoutMs: 180000 }),
       autoTeach: () => loadConfig(store.home).mode === "auto" ? { level: loadConfig(store.home).level, lang: loadConfig(store.home).lang } : null,
     });
     writeJson(serverFile, { port: srv.port, token: srv.token, pid: process.pid, url: srv.url, startedAt: new Date().toISOString() });

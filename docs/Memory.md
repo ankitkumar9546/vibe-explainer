@@ -2,6 +2,29 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-21 (evening): Phase 8, to-do + chat + learning record + export
+
+- New core modules: `todo.js`, `export.js`, `learning.js`, `teacher/chat.js`.
+- New endpoints: `/api/export`, `/api/record`, `POST /api/quiz`, `POST /api/chat`, `POST /api/explain-back`. `/api/turn` now also returns `todo` and `quiz`.
+- CLI: `export --kind pr|commit|note`.
+- Console:
+  - The guided lesson has **5 steps**: To-do sits before Quiz, and the manual test moved into To-do.
+  - Developer tabs gain To-do.
+  - Chat panel; click a diff line to ask about it; "Explain it in your own words" in Quiz; "Learning record & export" in the rail.
+- **Bug fixed from Phase 7.** The glossary's regex escape was `"\\function learn() {"` instead of `"\\$&"`: a `String.replace` `$&` slip in the patch script. Plain words worked, but `try/catch` and `.json` terms would not. The patch scripts now use function replacements.
+- Also fixed: the timeline strip ignored `hidden` (its `display:grid` won), and on phones the chat button covered "Next".
+- Demo data now carries `todo` per turn, the three exports in both languages, and the learning record with every concept at "new". Visitors' quiz answers are not shared.
+- **Checked:**
+  - `npm test`: 41/41. The 10 new tests cover: to-do sources one by one; exact PR/commit/note text; quiz save, first-answer rule and reset; record statuses; masked chat record; explain-back retry; the server endpoints.
+  - Driven in headless Edge over the DevTools protocol (`scratchpad/cdp.mjs`), with real clicks against the real server and the real `claude` on the Phase 6 scratch turn:
+    - **Ask-a-line**, in Hinglish. It named `LoginPage.js:4` and `SignupPage.js:6` from the code scan.
+    - **Chat** ("What could this break?"), grounded in the record with file and line.
+    - **Explain-back**: "Partly right", and it listed zod and the two pages as missed.
+    - To-do tick, PR and commit exports, and the record after a wrong quiz answer ("Needs revision").
+  - Light and dark, 1440 px and 390 px.
+  - Static demo: chat shows the demo note; record and day-note export work.
+- **Next:** Phase 9, the playground.
+
 ## 2026-11-21 (later): Phase 7, guided lesson
 
 - Beginner level = the mockup's guided lesson: a stepper with **4 steps** (What happened, What changed, Watch out, Quiz). The mockup has 6. "Try it" (playground) comes with Phase 9 and "To-do" with Phase 8. Until then the manual test sits at the end of Quiz.
