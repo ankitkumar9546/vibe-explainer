@@ -3,18 +3,22 @@ import path from "node:path";
 import { readJson, writeJson, FORMAT_VERSION } from "../store.js";
 import { buildContext } from "./context.js";
 import { buildPrompt, extractJson, validateLesson } from "./lesson.js";
+import { ensureAnalysis } from "../analyzer/index.js";
 
 /**
  * @param {import("../store.js").Store} store
  * @param {{projectId: string, sessionId: string, turn: number}} ids
- * @param {{teacher: {name: string, ask: (prompt: string) => Promise<string>}, level?: string, lang?: string, now?: () => string}} opts
+ * @param {{teacher: {name: string, ask: (prompt: string) => Promise<string>}, level?: string, lang?: string, online?: boolean, now?: () => string}} opts
  * @returns {Promise<{ok: boolean, lesson?: object, error?: string, file?: string}>}
  */
-export async function teachTurn(store, ids, { teacher, level = "beg", lang = "hi", now = () => new Date().toISOString() }) {
+export async function teachTurn(store, ids, { teacher, level = "beg", lang = "hi", online = false, now = () => new Date().toISOString() }) {
   const tdir = store.turnDir(ids.projectId, ids.sessionId, ids.turn);
   const turnFile = path.join(tdir, "turn.json");
   const mark = (fields) => writeJson(turnFile, { ...readJson(turnFile, {}), ...fields });
   mark({ status: "analysing" });
+
+  // The lesson builds on the analysis (callers, packages, security), so make sure it exists.
+  try { await ensureAnalysis(store, ids, { online }); } catch { /* a lesson without analysis is still useful */ }
 
   let prompt;
   try { prompt = buildPrompt(buildContext(store, ids), { level, lang }); }

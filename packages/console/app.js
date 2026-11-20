@@ -1,4 +1,4 @@
-// vibe-explainer console (Roadmap Phase 4): real data from the local server.
+// vibe-explainer console (Roadmap Phases 4 and 6): real data from the local server.
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const code = (s) => String(s ?? "").split("`").map((p, i) => (i % 2 ? `<code>${esc(p)}</code>` : esc(p))).join("");
@@ -13,16 +13,16 @@ const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { re
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 const S = {
-  lang: pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
+  lang: pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
   projects: [], project: params.get("project"), sessions: [], session: params.get("session"),
-  turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null,
+  turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null, wireSel: null,
 };
 
 const UI = {
   project: { hi: "Project", en: "Project" }, session: { hi: "Session", en: "Session" },
   turnsHead: { hi: "Prompts (is session ke)", en: "Prompts in this session" },
   chSoch: { hi: "Soch", en: "Thinking" }, chRead: { hi: "Padha", en: "Read" }, chEdit: { hi: "Badla", en: "Edit" }, chRun: { hi: "Chalaya", en: "Run" },
-  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, learn: { hi: "Seekho", en: "Learn" } },
+  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, wiring: { hi: "Wiring", en: "Wiring" }, impact: { hi: "Impact", en: "Impact" }, learn: { hi: "Seekho", en: "Learn" } },
   rec: { hi: "Recording", en: "Recording" }, now: { hi: "Abhi", en: "Now" },
   steps: { hi: "kadam", en: "steps" }, files: { hi: "files", en: "files" }, sec: { hi: "sec", en: "s" },
   tl: { hi: "Timeline", en: "Timeline" }, at: { hi: "is pal", en: "at" }, openTl: { hi: "Poori timeline kholo", en: "Open full timeline" }, closeTl: { hi: "Chhoti karo", en: "Collapse" }, follow: { hi: "Live pe wapas", en: "Back to live" },
@@ -167,7 +167,7 @@ function head() {
 
 function nav() {
   if (!S.data) { $("#nav").innerHTML = ""; return; }
-  const tabs = ["live", "logs", "changes", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", learn: "t-seekho" };
+  const tabs = ["live", "logs", "changes", "wiring", "impact", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", learn: "t-seekho" };
   $("#nav").innerHTML = `<div class="tabs" role="tablist">${tabs.map((k) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}"><svg class="i"><use href="#${ic[k]}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
 }
 
@@ -176,7 +176,7 @@ function content() {
   if (!TOKEN) { C.innerHTML = `<div class="empty">${code(T(UI.noToken))}</div>`; return; }
   if (!S.projects.length) { C.innerHTML = `<div class="empty">${code(T(UI.noData))}</div>`; return; }
   if (!S.data) { C.innerHTML = `<div class="empty">${T(UI.noTurns)}</div>`; return; }
-  C.innerHTML = `<div class="panel">${{ live, logs, changes, learn }[S.tab]()}</div>`;
+  C.innerHTML = `<div class="panel">${{ live, logs, changes, wiring, impact, learn }[S.tab]()}</div>`;
 }
 
 function live() {
@@ -242,6 +242,202 @@ function changes() {
     <div class="notes">${notes.length ? notes.map((n) => `<div class="note"><b>${S.data.lesson.level === "dev" ? T(UI.devNote) : T(UI.plain)}</b>${code(n.text)}</div>`).join("") : `<div class="note muted">${S.data.lesson ? "" : (S.lang === "hi" ? "Lesson banne ke baad yahan har badlaav ka saral samjhaana aayega (Seekho tab)." : "Once the lesson is written, plain-words notes appear here (Learn tab).")}</div>`}</div></div>`;
 }
 
+/* ---------- analyzer: wiring + impact (Phase 6) ---------- */
+const AN = {
+  wait: { hi: "Ye prompt khatam hone ke baad banega.", en: "This is worked out when the prompt ends." },
+  none: { hi: "Is prompt mein koi function ya class nahi badli (JS/TS/Python files dekhi jaati hain).", en: "No function or class changed in this prompt (JS/TS and Python files are read)." },
+  legendOld: { hi: "pehle se tha", en: "already there" }, legendChanged: { hi: "badla", en: "changed" }, legendNew: { hi: "naya", en: "new" }, legendRisk: { hi: "dhyan do", en: "watch this" },
+  wireHint: { hi: "Kisi dabbe pe click karo: wo kisse juda hai, wahi dikhega.", en: "Click a box to see only what it connects to." },
+  calls: { hi: "isko call karta hai", en: "calls it" },
+  risk: { 1: { hi: "Kam", en: "Low" }, 2: { hi: "Beech", en: "Medium" }, 3: { hi: "Zyada", en: "High" } },
+  todo: { hi: "Kya karo:", en: "What to do:" }, users: { hi: "Kahan use hota hai", en: "Where it is used" },
+  fix: { hi: "AI ko ye bhejo", en: "Send this to the AI" }, copy: { hi: "Copy", en: "Copy" }, copied: { hi: "Copy ho gaya", en: "Copied" },
+  noImpact: { hi: "Is prompt ke badlaav se baaki code pe koi asar nahi dikha: badle hue functions ko kahin aur se call nahi kiya jaata.", en: "Nothing else in the code seems affected: no other code calls the functions that changed." },
+  secHead: { hi: "Packages aur security", en: "Packages and security" },
+  noPkg: { hi: "Is prompt mein koi package nahi aaya ya gaya.", en: "No package was added or removed in this prompt." },
+  pkgWhat: { hi: "Kya karta hai", en: "What it does" }, pkgSize: { hi: "Size", en: "Size" }, pkgLic: { hi: "Licence", en: "Licence" }, pkgDl: { hi: "Downloads/hafta", en: "Downloads/week" },
+  pkgFine: { hi: "Theek lagta hai", en: "Looks fine" }, pkgCheck: { hi: "Ek baar dekh lo", en: "Have a look" },
+  pkgOff: { hi: "Online jaankari band hai (`vibe-explainer config set registry on`).", en: "Online lookups are off (`vibe-explainer config set registry on`)." },
+  pkgFail: { hi: "Jaankari nahi mil paayi:", en: "Couldn't look it up:" },
+  removed: { hi: "hataya", en: "removed" }, changedV: { hi: "version badla", en: "version changed" }, dev: { hi: "sirf development", en: "dev only" },
+  okSecret: { hi: "Naye code mein koi password ya key nahi mili", en: "No password or key in the new code" },
+  okPatterns: { hi: "Naye code mein koi khatarnak pattern nahi mila (eval, shell, HTML, SQL)", en: "No risky pattern in the new code (eval, shell, HTML, SQL)" },
+  scanned: { hi: "Sirf is prompt mein jode gaye lines check hui. Ye pattern hain, saboot nahi: line khud padho.", en: "Only the lines added in this prompt are checked. These are patterns, not proof: read the line yourself." },
+  meta: { hi: "Code padh ke nikala (AI ne nahi)", en: "Found by reading the code (not by the AI)" },
+};
+const RULE = {
+  "secret": { t: { hi: "Code mein ek key ya password", en: "A key or password in the code" }, d: { hi: "Ye line ek asli secret jaisi dikhti hai. Code mein secret rakhoge to git ke saath sab tak pahunch jaata hai. Isko `.env` file mein rakho aur code mein `process.env` se padho.", en: "This line looks like a real secret. Secrets in code travel with git to everyone. Keep it in a `.env` file and read it with `process.env`." } },
+  "env-file": { t: { hi: "`.env` file project mein hai, par `.gitignore` mein nahi", en: "A `.env` file that `.gitignore` does not cover" }, d: { hi: "Is file mein aksar passwords hote hain. `.gitignore` mein `.env` jodo, taaki ye git mein na jaaye. (Iski values yahan nahi dikhayi jaati.)", en: "This file usually holds passwords. Add `.env` to `.gitignore` so it never goes into git. (Its values are never shown here.)" } },
+  "eval": { t: { hi: "`eval` ya `new Function`", en: "`eval` or `new Function`" }, d: { hi: "Ye text ko code bana ke chala deta hai. Agar text user se aaya, to wo kuch bhi chala sakta hai.", en: "This runs text as code. If the text comes from a user, they can run anything." } },
+  "shell-injection": { t: { hi: "Command mein joda hua text", en: "Text glued into a shell command" }, d: { hi: "Command banate waqt bahar ka text joda gaya hai. Usme `; rm -rf` jaisa kuch ho to wo bhi chal jaayega. Arguments ko alag list mein do.", en: "Outside text is glued into a command. Something like `; rm -rf` in it would run too. Pass arguments as a separate list." } },
+  "tls-off": { t: { hi: "HTTPS ki jaanch band ki gayi", en: "HTTPS checks turned off" }, d: { hi: "Isse beech mein koi bhi nakli server ban ke data padh sakta hai. Sirf local testing ke liye theek hai.", en: "Anyone in between can pose as the server and read the data. Only acceptable for local testing." } },
+  "unsafe-deserialize": { t: { hi: "Data ko unsafe tareeke se padha", en: "Data loaded in an unsafe way" }, d: { hi: "`pickle` ya `yaml.load` bahar ke data se code chala sakte hain. `json` ya `yaml.safe_load` use karo.", en: "`pickle` and `yaml.load` can run code hidden in the data. Use `json` or `yaml.safe_load`." } },
+  "sql-concat": { t: { hi: "SQL mein seedha joda hua value", en: "A value glued into SQL" }, d: { hi: "Isse SQL injection ho sakta hai. Value ko `?` ya `$1` jaise placeholder se bhejo.", en: "This allows SQL injection. Pass the value through a placeholder like `?` or `$1`." } },
+  "html-injection": { t: { hi: "HTML seedha page mein daala", en: "HTML written straight into the page" }, d: { hi: "Agar ye text user se aaya, to usme `<script>` bhi chal sakta hai (XSS). Sirf text dikhana ho to `textContent` use karo.", en: "If this text comes from a user, a `<script>` inside it can run (XSS). Use `textContent` when you only show text." } },
+  "error-leak": { t: { hi: "Error ki andar ki details user ko", en: "Internal error details sent to the user" }, d: { hi: "Stack trace se server ke andar ki baatein dikh jaati hain. User ko chhota message do, details sirf log mein rakho.", en: "A stack trace shows how the server works inside. Send a short message; keep details in the log." } },
+  "cors-any": { t: { hi: "Har website ko API access", en: "Every website may call this API" }, d: { hi: "`*` ka matlab koi bhi site is API ko browser se call kar sakti hai. Sirf apni site ka address do.", en: "`*` lets any site call this API from a browser. Name your own site instead." } },
+  "weak-hash": { t: { hi: "Purana hash (md5/sha1)", en: "An old hash (md5/sha1)" }, d: { hi: "Passwords ya security ke liye ye kamzor hain. Password ke liye `bcrypt`/`argon2`, baaki ke liye `sha256`.", en: "Too weak for passwords or security. Use `bcrypt`/`argon2` for passwords, `sha256` otherwise." } },
+};
+const REASON = {
+  "new": { hi: "Is prompt mein naya bana.", en: "New in this prompt." },
+  "removed-still-used": { hi: "Function hata diya gaya, par code abhi bhi isko call karta hai: ye jagah ab toot sakti hain.", en: "It was removed, but code still calls it: those places can now break." },
+  "removed-unused": { hi: "Hata diya gaya, aur koi isko use nahi karta tha.", en: "It was removed, and nothing used it." },
+  "used-elsewhere": { hi: "Doosre code se call hota hai, to unka nateeja bhi badal sakta hai.", en: "Other code calls it, so their results can change too." },
+  "signature-changed": { hi: "Iske parameters badle. Purane tareeke se call karne wali jagah galat value bhej sakti hain.", en: "Its parameters changed. Places that call it the old way may pass the wrong values." },
+  "many-callers": { hi: "Bahut jagah use hota hai.", en: "Many places use it." },
+  "exported": { hi: "Ye file ke bahar bhi diya (export) gaya hai.", en: "It is exported, so other files can use it." },
+  "no-tests": { hi: "Koi test isko call nahi karta, to galti apne aap nahi pakdi jaayegi.", en: "No test calls it, so a mistake won't be caught automatically." },
+  "tested": { hi: "Ek test isko call karta hai. Tests chala ke dekh lo.", en: "A test calls it. Run the tests to check." },
+};
+const fnName = (s) => `${s.owner ? `${s.owner}.` : ""}${s.name}${s.kind === "class" ? "" : "()"}`;
+const fmtSize = (b) => (b == null ? "?" : b < 1024 ? `${b} B` : b < 1048576 ? `${Math.round(b / 1024)} KB` : `${(b / 1048576).toFixed(1)} MB`);
+const fmtNum = (n) => (n == null ? "?" : n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n));
+const PERMISSIVE = /^(MIT|ISC|BSD|Apache|0BSD|Unlicense|CC0|Python|PSF|Zlib|BlueOak|MPL)/i;
+const usersOf = (s) => s.callers.filter((c) => c.kind !== "import");
+
+function anWait() {
+  const t = S.data.turn;
+  if (!t.after) return `<div class="empty">${t.snapshotError ? esc(t.snapshotError) : T(AN.wait)}</div>`;
+  if (!S.data.analysis) return `<div class="empty">${T(UI.pending)}</div>`;
+  if (S.data.analysis.error) return `<div class="empty">${esc(S.data.analysis.error)}</div>`;
+  return null;
+}
+
+/** Boxes and arrows: callers → changed code → what it calls. */
+function wiring() {
+  const w = anWait(); if (w) return w;
+  const a = S.data.analysis;
+  const syms = a.symbols.slice().sort((x, y) => y.risk - x.risk).slice(0, 8);
+  if (!syms.length) return `<div class="empty">${T(AN.none)}</div>`;
+  const nodes = new Map(), edges = [], col = [[], [], []], info = {};
+  const add = (id, c, n) => { if (!nodes.has(id)) { nodes.set(id, { id, ...n }); col[c].push(id); } return nodes.get(id); };
+  for (const s of syms) {
+    const id = `s:${s.file}:${fnName(s)}`;
+    add(id, 1, { label: fnName(s), k: s.file.split("/").pop(), st: s.risk >= 3 || s.change === "removed" ? "risk" : s.change === "added" ? "new" : "changed", sym: s });
+  }
+  let hidden = 0;
+  for (const s of syms) {
+    const to = `s:${s.file}:${fnName(s)}`;
+    for (const c of usersOf(s)) {
+      const changed = syms.find((x) => x.file === c.file && c.in && fnName(x).replace(/\(\)$/, "") === c.in);
+      const from = changed ? `s:${changed.file}:${fnName(changed)}` : `c:${c.file}:${c.in ?? ""}`;
+      if (!changed) {
+        if (!nodes.has(from) && col[0].length >= 8) { hidden++; continue; }
+        const n = add(from, 0, { label: c.in ? `${c.in}()` : c.file.split("/").pop(), k: c.in ? c.file.split("/").pop() : (S.lang === "hi" ? "file ke upar" : "top of file"), st: "old", uses: [] });
+        n.uses.push({ s, c });
+      }
+      if (from !== to && !edges.some(([x, y]) => x === from && y === to)) edges.push([from, to, s.change === "added" ? "new" : ""]);
+    }
+    for (const k of s.calls ?? []) {
+      const known = syms.find((x) => x.name === k.name);
+      const id = known ? `s:${known.file}:${fnName(known)}` : `k:${k.name}`;
+      if (!known) { if (!nodes.has(id) && col[2].length >= 6) { hidden++; continue; } add(id, 2, { label: `${k.name}()`, k: k.from ?? s.file.split("/").pop(), st: "old", by: [] }).by.push(s); }
+      if (id !== to && !edges.some(([x, y]) => x === to && y === id)) edges.push([to, id, s.change === "added" ? "new" : ""]);
+    }
+  }
+  const nw = 220, nh = 50, xs = [30, 330, 630];
+  const used = [0, 1, 2].filter((c) => col[c].length);
+  used.forEach((c, i) => col[c].forEach((id, j) => Object.assign(nodes.get(id), { x: xs[i], y: 20 + j * 74 })));
+  for (const n of nodes.values()) {
+    if (n.sym) {
+      const s = n.sym, u = usersOf(s);
+      const what = { added: { hi: "Is prompt mein naya bana.", en: "New in this prompt." }, modified: { hi: "Is prompt mein badla.", en: "Changed in this prompt." }, removed: { hi: "Is prompt mein hataya gaya.", en: "Removed in this prompt." } }[s.change];
+      info[n.id] = `${T(what)} ${u.length ? (S.lang === "hi" ? `${u.length} jagah se call hota hai.` : `Called from ${u.length} place${u.length > 1 ? "s" : ""}.`) : (S.lang === "hi" ? "Koi aur isko call nahi karta." : "Nothing else calls it.")} <code>${esc(s.file)}:${s.start}</code>`;
+    } else if (n.uses) {
+      info[n.id] = `${S.lang === "hi" ? "Is prompt mein nahi badla, par badle hue code ko use karta hai:" : "Not changed in this prompt, but it uses changed code:"} ${n.uses.map(({ s, c }) => `<code>${esc(fnName(s))}</code> (<code>${esc(c.file)}:${c.line}</code>)`).join(", ")}`;
+    } else {
+      info[n.id] = `${n.by.map((s) => `<code>${esc(fnName(s))}</code>`).join(", ")} ${S.lang === "hi" ? "isko call karta hai. Ye khud nahi badla." : `call${n.by.length > 1 ? "" : "s"} this. It did not change itself.`}`;
+    }
+  }
+  const all = [...nodes.values()];
+  const linked = (id) => !S.wireSel || id === S.wireSel || edges.some(([x, y]) => (x === S.wireSel && y === id) || (y === S.wireSel && x === id));
+  const maxX = Math.max(...all.map((n) => n.x)) + nw + 30, maxY = Math.max(...all.map((n) => n.y)) + nh + 20;
+  const trunc = (t, n) => (t.length > n ? `${t.slice(0, n - 1)}…` : t);
+  const ed = edges.map(([p, q, k]) => {
+    const A = nodes.get(p), B = nodes.get(q);
+    let x1 = A.x + nw, y1 = A.y + nh / 2, x2 = B.x, y2 = B.y + nh / 2;
+    let d;
+    if (B.x === A.x) { x1 = A.x + nw / 2; x2 = B.x + nw / 2; y1 = A.y + (B.y > A.y ? nh : 0); y2 = B.y + (B.y > A.y ? 0 : nh); d = `M${x1},${y1} L${x2},${y2 + (B.y > A.y ? -4 : 4)}`; }
+    else if (B.x < A.x) { x1 = A.x; x2 = B.x + nw; d = `M${x1},${y1} C${x1 - 50},${y1} ${x2 + 50},${y2} ${x2 + 4},${y2}`; }
+    else d = `M${x1},${y1} C${x1 + 50},${y1} ${x2 - 50},${y2} ${x2 - 4},${y2}`;
+    const dim = S.wireSel && !(p === S.wireSel || q === S.wireSel);
+    return `<path class="edge ${k} ${dim ? "dim" : ""}" d="${d}" marker-end="url(#${k === "new" ? "arN" : "ar"})"/>`;
+  }).join("");
+  const nd = all.map((n) => `<g class="node ${n.st} ${linked(n.id) ? "" : "dim"}" data-node="${esc(n.id)}" tabindex="0" role="button" aria-pressed="${S.wireSel === n.id}" aria-label="${esc(n.label)}">
+     <rect x="${n.x}" y="${n.y}" width="${nw}" height="${nh}" rx="12"/>
+     <text x="${n.x + 14}" y="${n.y + 22}">${esc(trunc(n.label, 22))}</text><text class="k" x="${n.x + 14}" y="${n.y + 39}">${esc(trunc(n.k, 30))}</text><title>${esc(n.label)}</title></g>`).join("");
+  const dark = document.documentElement.dataset.theme === "dark";
+  const sel = S.wireSel && nodes.get(S.wireSel);
+  return `<div class="wire"><svg viewBox="0 0 ${maxX} ${maxY}" width="${maxX}" height="${maxY}" role="img" aria-label="Wiring">
+      <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="${dark ? "#5A4C7E" : "#C9B8AA"}"/></marker>
+      <marker id="arN" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="#5BAA7E"/></marker></defs>
+      ${ed}${nd}</svg></div>
+    <div class="legend"><span><i></i>${T(AN.legendOld)}</span><span><i class="c"></i>${T(AN.legendChanged)}</span><span><i class="n"></i>${T(AN.legendNew)}</span><span><i class="r"></i>${T(AN.legendRisk)}</span></div>
+    ${hidden || a.symbols.length > syms.length ? `<p class="wire-more">${S.lang === "hi" ? "Jagah ke liye kuch dabbe chhupaye gaye. Poori list Impact tab mein hai." : "Some boxes are left out to fit. The full list is on the Impact tab."}</p>` : ""}
+    <p class="wire-info">${sel ? `<b><code>${esc(sel.label)}</code></b> · ${info[sel.id]}` : `<span class="muted">${T(AN.wireHint)}</span>`}</p>`;
+}
+
+/** Impact items from the analysis: risky changes first, each with its evidence and a prompt to fix it. */
+function impactItems() {
+  const a = S.data?.analysis; if (!a?.symbols) return [];
+  return a.symbols.filter((s) => s.change !== "added" || s.risk >= 2).sort((x, y) => y.risk - x.risk).map((s) => {
+    const u = usersOf(s), n = u.length, f = `\`${fnName(s)}\``;
+    const hi = S.lang === "hi";
+    const title = s.change === "removed" ? (n ? (hi ? `${f} hata diya, par ${n} jagah abhi bhi use hota hai` : `${f} was removed, but ${n} place${n > 1 ? "s" : ""} still use it`) : (hi ? `${f} hata diya` : `${f} was removed`))
+      : s.signatureChanged ? (hi ? `${f} ke parameters badle` : `${f} takes different parameters now`)
+      : n ? (hi ? `${f} badla, ${n} jagah use hota hai` : `${f} changed; ${n} place${n > 1 ? "s" : ""} use it`)
+      : (hi ? `${f} badla, koi aur isko use nahi karta` : `${f} changed; nothing else uses it`);
+    const todo = [];
+    if (s.reasons.includes("removed-still-used")) todo.push(hi ? "Ya to function wapas lao, ya neeche wali har jagah se uska use hatao." : "Bring the function back, or remove its use from every place below.");
+    if (s.reasons.includes("signature-changed") && n) todo.push(hi ? `Neeche wali har jagah dekho ki wo naye parameters (${s.params ?? ""}) bhejti hai.` : `Check that every place below passes the new parameters (${s.params ?? ""}).`);
+    if (s.reasons.includes("no-tests")) todo.push(hi ? "Iske liye ek chhota test likhwao." : "Ask for a small test that calls it.");
+    if (s.reasons.includes("tested")) todo.push(hi ? "Tests chalao." : "Run the tests.");
+    if (!todo.length) todo.push(hi ? "Kuch nahi, bas jaan lo." : "Nothing; just be aware of it.");
+    const where = u.slice(0, 12).map((c) => `${c.file}:${c.line}`).join(", ");
+    const prompt = s.risk < 2 ? "" : s.change === "removed"
+      ? (hi ? `\`${s.file}\` se \`${fnName(s)}\` hata diya gaya, par ye abhi bhi in jagahon pe use hota hai: ${where}. Har jagah theek karo (ya function wapas lao), phir tests chalao.` : `\`${fnName(s)}\` was removed from \`${s.file}\`, but these places still use it: ${where}. Fix each one (or bring the function back), then run the tests.`)
+      : s.signatureChanged
+      ? (hi ? `\`${s.file}\` mein \`${fnName(s)}\` ke parameters (${s.paramsBefore ?? ""}) se (${s.params ?? ""}) ho gaye. In sab callers ko check karke update karo: ${where}.${s.tested ? "" : " Phir ek test likho jo naye parameters check kare."} Tests chalao.` : `In \`${s.file}\`, \`${fnName(s)}\` changed its parameters from (${s.paramsBefore ?? ""}) to (${s.params ?? ""}). Check and update every caller: ${where}.${s.tested ? "" : " Then add a test for the new parameters."} Run the tests.`)
+      : (hi ? `\`${s.file}\` mein \`${fnName(s)}\` badla hai. Ye jagah isko use karti hain: ${where}. Check karo ki inka behaviour sahi hai${s.tested ? "" : ", aur ek test likho"}.` : `\`${fnName(s)}\` in \`${s.file}\` changed. These places use it: ${where}. Check they still behave correctly${s.tested ? "" : ", and add a test"}.`);
+    return { s, title, users: u, todo, prompt };
+  });
+}
+
+function impact() {
+  const w = anWait(); if (w) return w;
+  const items = impactItems();
+  const list = items.length ? `<ul class="ilist">${items.map((it, i) => `<li><div class="rlevel">${T(AN.risk[it.s.risk])}<span class="meter l${it.s.risk}"><i></i><i></i><i></i></span></div>
+      <div><h5>${code(it.title)}</h5><div class="where">${esc(it.s.file)}:${it.s.start}</div>
+        <ul class="why">${it.s.reasons.map((r) => (REASON[r] ? `<li>${T(REASON[r])}</li>` : "")).join("")}</ul>
+        <div class="fix"><b>${T(AN.todo)}</b> ${it.todo.map(esc).join(" ")}</div>
+        ${it.users.length ? `<details><summary><svg class="i"><use href="#i-chev"/></svg>${T(AN.users)} (${it.users.length})</summary><ul class="users">${it.users.map((c) => `<li><code>${esc(c.file)}:${c.line}</code>${c.in ? ` · <b>${esc(c.in)}()</b>` : ""}<br><span class="muted">${esc(c.text)}</span></li>`).join("")}</ul></details>` : ""}
+        ${it.prompt ? `<div class="fixprompt"><div class="fp-head"><svg class="i"><use href="#i-msg"/></svg>${T(AN.fix)}</div><p>${code(it.prompt)}</p>
+          <button class="ghost sm" data-copy="an${i}">${S.copied === `an${i}` ? T(AN.copied) : `<svg class="i"><use href="#i-copy"/></svg>${T(AN.copy)}`}</button></div>` : ""}
+      </div></li>`).join("")}</ul>`
+    : `<div class="empty">${S.data.analysis.symbols.length ? T(AN.noImpact) : T(AN.none)}</div>`;
+  return `${list}${securityCard()}<p class="anmeta">${T(AN.meta)}${S.data.analysis.ms != null ? ` · ${S.data.analysis.ms} ms` : ""}</p>`;
+}
+
+function securityCard() {
+  const a = S.data.analysis, pk = a.packages ?? [], sec = a.security ?? [];
+  const pkgs = pk.length ? pk.map((p) => {
+    const f = p.facts;
+    if (p.change === "removed") return `<div class="pkg gone"><div class="pkgtop"><svg class="i"><use href="#i-pkg"/></svg><code>${esc(p.name)}@${esc(p.from)}</code><span class="badge">${T(AN.removed)}</span></div></div>`;
+    const fine = f && PERMISSIVE.test(f.license ?? "") && (f.weeklyDownloads == null || f.weeklyDownloads >= 1000);
+    const stamp = f ? `<span class="stampx ${fine ? "ok" : "unk"}"><svg class="i"><use href="#${fine ? "i-ok" : "i-unk"}"/></svg>${T(fine ? AN.pkgFine : AN.pkgCheck)}</span>` : "";
+    return `<div class="pkg"><div class="pkgtop"><svg class="i"><use href="#i-pkg"/></svg><code>${esc(p.name)}@${esc(p.to)}</code>${p.change === "changed" ? `<span class="badge">${T(AN.changedV)}: ${esc(p.from)}</span>` : ""}${p.dev ? `<span class="badge">${T(AN.dev)}</span>` : ""}${stamp}</div>
+      ${f ? `<dl><div><dt>${T(AN.pkgWhat)}</dt><dd>${esc(f.description ?? "?")}</dd></div><div><dt>${T(AN.pkgSize)}</dt><dd>${fmtSize(f.size)}</dd></div><div><dt>${T(AN.pkgLic)}</dt><dd>${esc(f.license ?? "?")}</dd></div><div><dt>${T(AN.pkgDl)}</dt><dd>${p.eco === "npm" ? fmtNum(f.weeklyDownloads) : "—"}</dd></div></dl>`
+        : `<p class="muted" style="margin:8px 0 0;font-size:14px">${p.factsError ? `${T(AN.pkgFail)} ${esc(p.factsError)}` : code(T(AN.pkgOff))}</p>`}</div>`;
+  }).join("") : `<p class="muted nopkg"><svg class="i"><use href="#i-pkg"/></svg>${T(AN.noPkg)}</p>`;
+  const hasSecret = sec.some((x) => x.rule === "secret" || x.rule === "env-file");
+  const checks = [
+    ...sec.map((x) => `<li class="c-${x.severity === "high" ? "bad" : "warn"}"><span class="cic"><svg class="i"><use href="#t-impact"/></svg></span><div><b>${code(T(RULE[x.rule]?.t ?? x.rule))}</b><p>${code(T(RULE[x.rule]?.d ?? ""))}</p><code class="where">${esc(x.file)}${x.line ? `:${x.line}` : ""}${x.text ? `  ${esc(x.text)}` : ""}</code></div></li>`),
+    hasSecret ? "" : `<li class="c-ok"><span class="cic"><svg class="i"><use href="#i-ok"/></svg></span><div><b>${T(AN.okSecret)}</b></div></li>`,
+    sec.some((x) => x.rule !== "secret" && x.rule !== "env-file") ? "" : `<li class="c-ok"><span class="cic"><svg class="i"><use href="#i-ok"/></svg></span><div><b>${T(AN.okPatterns)}</b></div></li>`,
+  ].join("");
+  return `<h3 class="subhead">${T(AN.secHead)}</h3><section class="card seccard">${pkgs}<ul class="checks">${checks}</ul><p class="muted" style="font-size:13px;margin:12px 0 0">${T(AN.scanned)}</p></section>`;
+}
+
 function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
@@ -266,7 +462,7 @@ function learn() {
     ${l.decision ? `<section class="card"><h5>${T(UI.decision)}</h5><p><b>${code(l.decision.question)}</b></p><ul class="rows">${l.decision.options.map((o) => `<li class="s-${o.chosen ? "done" : "part"}">${P(o.chosen ? "done" : "part")}<div><b>${code(o.text)}</b><small>${code(o.why)}</small></div></li>`).join("")}</ul>${l.decision.quote ? `<p class="muted" style="margin-top:10px"><i>${code(l.decision.quote)}</i></p>` : ""}</section>` : ""}
     ${l.errors?.length ? `<section class="card"><h5>${T(UI.errors)}</h5><ul class="rows">${l.errors.map((e) => `<li class="s-none">${P("none")}<div><b><code>${esc(e.command)}</code></b><small>${code(e.simple)}</small><small>${code(e.fix)}</small></div></li>`).join("")}</ul></section>` : ""}
     ${l.impact?.length ? `<section class="card"><h5>${T(UI.impact)}</h5><ul class="rows impact">${l.impact.map((m, i) => `<li><div><b>${code(m.title)}<span class="meter l${m.risk}"><i></i><i></i><i></i></span> <small style="display:inline">${T(rl[m.risk])}</small></b><small><code>${esc(m.where)}</code></small><p>${code(m.why)}</p><p class="muted">${code(m.fix)}</p>
-      ${m.prompt ? `<div class="fixprompt"><b style="color:var(--action)">${T(UI.fix)}</b><p>${esc(m.prompt)}</p><button class="ghost sm" data-copy="${i}">${S.copied === i ? T(UI.copied) : `<svg class="i"><use href="#i-copy"/></svg>${T(UI.copy)}`}</button></div>` : ""}</div></li>`).join("")}</ul></section>` : ""}
+      ${m.prompt ? `<div class="fixprompt"><b style="color:var(--action)">${T(UI.fix)}</b><p>${esc(m.prompt)}</p><button class="ghost sm" data-copy="${i}">${S.copied === String(i) ? T(UI.copied) : `<svg class="i"><use href="#i-copy"/></svg>${T(UI.copy)}`}</button></div>` : ""}</div></li>`).join("")}</ul></section>` : ""}
     ${l.concepts?.length ? `<section class="card"><h5>${T(UI.concepts)}</h5><div class="concepts">${l.concepts.map((c) => `<details><summary><svg class="i"><use href="#i-chev"/></svg><code>${esc(c.name)}</code></summary><div>${code(c.explain)}</div></details>`).join("")}</div></section>` : ""}
     ${l.quiz?.length ? `<section class="card"><h5>${T(UI.quiz)}</h5>${l.quiz.map((q, i) => { const ans = qs[i]; return `<div class="q"><p>${i + 1}. ${code(q.q)}</p><div class="opts">${q.options.map((o, j) => `<button data-q="${i}" data-o="${j}" class="${ans == null ? "" : j === q.answer ? "right" : j === ans ? "wrong" : ""}" ${ans != null ? "disabled" : ""}>${code(o)}</button>`).join("")}</div>${ans != null ? `<div class="qexp">${code(q.explain)}</div>` : ""}</div>`; }).join("")}</section>` : ""}
     ${l.manualTest?.steps?.length ? `<section class="card manual"><h5>${T(UI.manual)}</h5><ol>${l.manualTest.steps.map((s) => `<li>${code(s)}</li>`).join("")}</ol><div class="expect"><b>${T(UI.expect)}</b><br>${code(l.manualTest.expect)}</div></section>` : ""}
@@ -333,7 +529,7 @@ document.addEventListener("click", async (e) => {
   if (b.dataset.lang) { S.lang = b.dataset.lang; save("vx-lang", S.lang); all(); }
   else if (b.dataset.level) { S.level = b.dataset.level; save("vx-level", S.level); labels(); }
   else if (b.id === "themeBtn") { const r = document.documentElement; r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark"; save("vx-theme", r.dataset.theme); }
-  else if (b.dataset.turn) { S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; await loadTurn(); }
+  else if (b.dataset.turn) { S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; S.wireSel = null; await loadTurn(); }
   else if (b.dataset.tab) { S.tab = b.dataset.tab; nav(); content(); }
   else if (b.dataset.file) { S.file = +b.dataset.file; content(); }
   else if (b.id === "tlToggle") { S.stripOpen = !S.stripOpen; strip(); }
@@ -341,9 +537,9 @@ document.addEventListener("click", async (e) => {
   else if (b.dataset.jump) { S.cur = +b.dataset.jump; S.follow = false; S.stripOpen = true; S.tab = "live"; all(); }
   else if (b.dataset.q) { (S.quiz[`${S.session}/${S.turn}`] ??= {})[+b.dataset.q] = +b.dataset.o; content(); }
   else if (b.dataset.copy) {
-    const m = S.data.lesson.impact[+b.dataset.copy];
-    try { await navigator.clipboard.writeText(m.prompt); } catch { /* clipboard blocked */ }
-    S.copied = +b.dataset.copy; content(); setTimeout(() => { S.copied = null; content(); }, 1600);
+    const k = b.dataset.copy, text = k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k]?.prompt;
+    try { await navigator.clipboard.writeText(text ?? ""); } catch { /* clipboard blocked */ }
+    S.copied = k; content(); setTimeout(() => { S.copied = null; content(); }, 1600);
   }
   else if (b.id === "teachBtn") {
     b.disabled = true;
@@ -351,6 +547,13 @@ document.addEventListener("click", async (e) => {
     catch { b.disabled = false; }
   }
 });
+function pickNode(e) {
+  const g = e.target.closest?.("[data-node]"); if (!g) return;
+  S.wireSel = S.wireSel === g.dataset.node ? null : g.dataset.node; content();
+  if (S.wireSel) document.querySelector(`[data-node="${CSS.escape(S.wireSel)}"]`)?.focus();
+}
+document.addEventListener("click", (e) => { if (S.tab === "wiring") pickNode(e); });
+document.addEventListener("keydown", (e) => { if (S.tab === "wiring" && (e.key === "Enter" || e.key === " ") && e.target.closest?.("[data-node]")) { e.preventDefault(); pickNode(e); } });
 document.addEventListener("change", async (e) => {
   if (e.target.id === "projectSel") { S.project = e.target.value; S.session = null; await loadSessions(); }
   if (e.target.id === "sessionSel") { S.session = e.target.value; await loadSession(); }

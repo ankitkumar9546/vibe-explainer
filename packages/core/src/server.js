@@ -4,6 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import crypto from "node:crypto";
 import { readJson } from "./store.js";
+import { ensureAnalysis } from "./analyzer/index.js";
 
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".woff2": "font/woff2", ".json": "application/json" };
 
@@ -39,10 +40,10 @@ function turnsOf(store, projectId, sessionId) {
 
 /**
  * @param {import("./store.js").Store} store
- * @param {{staticDir: string, port?: number, token?: string, onExplain?: (ids: object, opts: object) => Promise<any>}} opts
+ * @param {{staticDir: string, port?: number, token?: string, onExplain?: (ids: object, opts: object) => Promise<any>, online?: () => boolean, fetchFn?: Function}} opts
  * @returns {Promise<{server: http.Server, port: number, token: string, url: string, close: () => Promise<void>}>}
  */
-export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach } = {}) {
+export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach, online = () => false, fetchFn } = {}) {
   const busy = new Set(); // turns being taught right now
 
   // mode auto: while the console is open, teach finished turns that have no lesson yet, one at a time.
@@ -99,10 +100,12 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
           const t = readJson(path.join(dir, "turn.json"));
           if (!t) return send(res, 404, { error: "no such turn" });
           let diff = ""; try { diff = fs.readFileSync(path.join(dir, "diff.patch"), "utf8"); } catch { /* not yet */ }
+          let analysis = null;
+          if (t.after) { try { analysis = await ensureAnalysis(store, { projectId, sessionId, turn }, { online: !!online(), fetchFn }); } catch { /* shown as missing */ } }
           return send(res, 200, {
             turn: { ...t, teaching: busy.has(`${projectId}/${sessionId}/${turn}`) },
             events: store.readEvents(projectId, sessionId).filter((e) => e.turn === turn),
-            diff, lesson: readJson(path.join(dir, "lesson.json")),
+            diff, analysis, lesson: readJson(path.join(dir, "lesson.json")),
           });
         }
         case "/api/explain": {

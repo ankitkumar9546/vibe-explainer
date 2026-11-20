@@ -8,7 +8,9 @@ takes and turns it into a lesson you can follow: a timeline, the diff in plain w
 impact, a check of the agent's claims against the evidence, and a quiz, in Hinglish or English.
 
 Everything runs on your machine. Your project's own `.git` is never written to. Nothing is
-uploaded except to the teacher model, and that is your own `claude`.
+uploaded except to the teacher model, and that is your own `claude`. One exception: when a
+prompt adds a package, its name is looked up on the npm registry or PyPI for its licence and
+size (`vibe-explainer config set registry off` turns that off).
 
 ![vibe-explainer console: a real Claude Code session with its timeline, diff and lesson](docs/media/demo.gif)
 
@@ -34,7 +36,7 @@ is recorded under `~/.vibe-explainer/`.
 | Command | What it does |
 |---|---|
 | `/vibe-explainer:explain` | Writes a lesson for your last finished prompt (about a minute, using your own Claude plan). Options: `--lang hi\|en`, `--level beg\|dev`, `--turn N` |
-| `/vibe-explainer:console` | Opens the console in your browser: a live timeline, the diff, logs, and the lesson |
+| `/vibe-explainer:console` | Opens the console in your browser: a live timeline, logs, the diff, the wiring map, the impact (who calls the code that changed), packages and security, and the lesson |
 
 You can also just ask *"what did you change and is it safe?"*. The bundled skill answers from
 the recorded evidence, not from memory.
@@ -45,6 +47,7 @@ the recorded evidence, not from memory.
 git clone https://github.com/ankitkumar9546/vibe-explainer && cd vibe-explainer
 node packages/cli/bin/vibe-explainer.js init /path/to/project     # hooks for one project
 node packages/cli/bin/vibe-explainer.js open /path/to/project     # the console
+node packages/cli/bin/vibe-explainer.js analyze /path/to/project      # callers, packages, security notes
 node packages/cli/bin/vibe-explainer.js explain /path/to/project --lang en
 node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson after every prompt
 ```
@@ -55,8 +58,9 @@ Use either the plugin or `init` in a project, not both, or every step is recorde
 ## How it works
 
 Claude Code hooks feed a recorder, which writes to a local store. A shadow git repo snapshots
-the code before and after each prompt. The teacher (`claude -p`) writes the lesson, and a local
-console shows it.
+the code before and after each prompt. An analyzer reads both snapshots: which functions changed,
+who calls them, which packages came or went, and risky patterns in the new lines. The teacher
+(`claude -p`) writes the lesson from all of that, and a local console shows it.
 
 [Architecture](docs/Architecture.md) · [Product](docs/PRD.md) · [Data format](docs/DataFormat.md) · [Design](docs/Design.md) · [Rules](docs/Rules.md)
 

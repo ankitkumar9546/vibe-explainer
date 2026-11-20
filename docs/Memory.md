@@ -2,6 +2,21 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-21: Phase 6, analyzer
+
+- `core/src/analyzer/`: `symbols.js`, `security.js`, `packages.js`, `index.js`. It writes `analysis.json` per turn (DataFormat §4), lazily, the first time the console, `explain` or `analyze` asks.
+- **Changed from the plan: no tree-sitter.** The plugin install has no `npm install`, so WASM grammars would have to live in git. A brace/indent scanner for JS/TS and Python is enough for line ranges, and callers come from `git grep` on the shadow repo's "after" snapshot (Architecture §3.4).
+- New: `vibe-explainer analyze [dir] [--json] [--offline]` and the setting `registry on|off` (default on: npm and PyPI lookups for added packages, sending only the package name).
+- Console: **Wiring** and **Impact** tabs, built from the mockup's round 3 and round 6 styles. Impact has risk, reasons, "where it is used", a copyable fix prompt, then "Packages and security".
+- The teacher gets the analysis as a STATIC ANALYSIS section and starts its impact list from it.
+- The demo data now carries the analysis. The site is rebuilt.
+- **Checked:**
+  - `npm test`: 31/31 pass. The 9 new tests cover: JS/Python symbols; a changed function's callers; a removed function still called is risk 3; a Python method with a tested caller is risk 2; packages with a stubbed registry; a planted key flagged and masked; `.env` values never stored.
+  - **Real `claude -p --plugin-dir` turn** in a scratch project: "login() takes a password, add zod". `analyze` found `login` modified `(email) -> (email, password)`, risk 3, used by `LoginPage.js:4` (onLoginSubmit) and `SignupPage.js:6` (onSignupSubmit). `zod` came back MIT, 651 KB, 475M downloads/week from the live registry, in 271 ms plus the lookup.
+  - A real lesson on that turn (36 s) listed both pages as risk 3 impact items, by file and line.
+  - Screenshots: Wiring and Impact in light and dark, at 1440 px and at 390 px (the bottom tab bar fits 6 tabs; the map scrolls inside its card). Demo site: Wiring and Impact render from the static data.
+- **Next:** Phase 7, the guided lesson (6 steps, health, glossary).
+
 ## 2026-11-20 (night): public + live demo
 
 - Ankit made the repo **public** and set Pages to GitHub Actions. My own attempt to change the visibility was blocked by the permission system, so he ran it himself.

@@ -51,7 +51,20 @@ so a hook starts fast and runs anywhere Node 20+ runs. The console is built with
 - "before" is taken **synchronously** in the `UserPromptSubmit` hook, so it is guaranteed to happen before the agent edits anything. This is the one exception to the 100 ms hook budget (PRD R2). "after" plus the diff run in a detached `finish-turn` process after `Stop`.
 - Diff: `git diff --find-renames --ignore-cr-at-eol`. Files whose only change is line endings are dropped, to match what `git diff` shows the user.
 
-### 3.4 Analyzer (`core/src/analyzer/`), Phase 6
+### 3.4 Analyzer (`core/src/analyzer/`), Phase 6 (built 11-21)
+Files: `symbols.js` (find functions, classes and methods with line ranges), `security.js` (patterns in added lines), `packages.js` (dependency diff + registry facts), `index.js` (`analyzeTurn`, `ensureAnalysis`, `analysisText`).
+- **No tree-sitter (changed from the plan).** A plugin install copies the repo without `npm install`, so a parser would mean shipping WASM grammars in git, and grammar and runtime versions must match. A small scanner is enough for what the analyzer needs (line ranges and names): JS/TS by braces (string, comment and template aware), Python by indentation. Other languages get packages and security, but no symbols. If it proves too rough, tree-sitter can replace `symbols.js` alone.
+- It reads only the shadow repo: `git show <before|after>:<file>` for contents and `git grep -w -F <name> <after>` for callers. The live project is never read, so a later edit can't change an old turn's analysis.
+- Symbols: a function is "modified" when an added line falls in its new range or a deleted line in its old one; "added" and "removed" go by name. A class is skipped when the change is inside one of its methods. Parameter lists are compared to catch signature changes.
+- Callers: grep hits minus comments, definitions and the symbol itself; methods and very common names count only as `.name(`. Each hit gets its enclosing function. Callees: names called inside the changed function that are defined in the same file or imported.
+- Risk: 3 when a removed function is still called, when the parameters changed and untested code calls it, or with 5+ untested callers; 2 when other code calls it; 1 otherwise. Reasons are stored as codes, and the console words them.
+- Packages: `package.json` (all four dependency fields) and `requirements*.txt`. Facts (licence, unpacked size, weekly downloads, description) come from `registry.npmjs.org`, `api.npmjs.org` and `pypi.org` with a 5 s timeout, only when `config registry` is `on` (the default). Removed packages are not looked up.
+- Security, on added lines only: `secret` (the masking patterns from `teacher/mask.js`; the stored text is masked), `env-file` (a `.env` that `.gitignore` doesn't cover; values are never stored), `eval`, `shell-injection`, `tls-off`, `unsafe-deserialize`, `sql-concat`, `html-injection`, `error-leak`, `cors-any`, `weak-hash`. Patterns, not proof.
+- **When it runs:** lazily, not in the Stop hook. `ensureAnalysis` writes `analysis.json` the first time the console, `explain` or `analyze` asks, and recomputes it when the turn's "after" commit changes. Measured: 135 to 300 ms per turn, plus the registry lookups.
+- The teacher gets `analysisText()` (masked, 8 KB budget) as a STATIC ANALYSIS section, and is told to start its impact list from it.
+- Console: Wiring tab (callers → changed code → what it calls, as an SVG map; click a box to focus it) and Impact tab (risk, reasons, where it is used, a copyable fix prompt, then packages and security), both from `analysis.json`.
+
+Original design notes:
 - `web-tree-sitter` (WASM) parses changed files: functions, classes, imports, calls.
 - Maps diff hunks to symbols, then finds callers and importers (the impact).
 - A simple risk score: number of callers, whether tests cover the symbol, whether it is exported.
@@ -125,12 +138,12 @@ teacher reads the agent's thinking and final reply from it.
 1. `UserPromptSubmit`: append the `prompt` event, open turn *n*, take the "before" snapshot (Phase 2).
 2. `PreToolUse` / `PostToolUse`: append tool events (live in the console over SSE).
 3. `Stop`: append `stop`, then spawn a detached `vibe-explainer finish-turn`:
-   take the "after" snapshot, write `diff.patch`, run the analyzer, run the teacher (in `auto` mode), and write `turn.json`, `analysis.json` and `lesson.json`.
+   take the "after" snapshot, write `diff.patch`, run the teacher (in `auto` mode), and write `turn.json` and `lesson.json`. `analysis.json` is written the first time anything asks for it (§3.4).
 4. The console updates when each file appears.
 
 ## 6. Security
 
 - Everything binds to localhost and the URL carries a token.
-- No network calls except the teacher model the user chose and, if enabled, the npm registry for package facts.
+- No network calls except the teacher model the user chose and, when `registry` is `on` (the default), npm or PyPI for facts about packages a prompt added (only the package name is sent).
 - The tool never runs code from the user's project except inside the sandbox, and only after the user enables sandbox runs.
 - Secrets are masked before the teacher sees anything (R4).

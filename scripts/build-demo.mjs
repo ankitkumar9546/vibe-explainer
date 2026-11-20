@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { Store, projectIdFor, readJson } from "../packages/core/src/index.js";
+import { Store, projectIdFor, readJson, ensureAnalysis } from "../packages/core/src/index.js";
 
 const arg = (n, d) => { const i = process.argv.indexOf(`--${n}`); return i > 0 ? process.argv[i + 1] : d; };
 const home = path.resolve(arg("home", path.join(os.homedir(), ".vibe-explainer")));
@@ -42,9 +42,10 @@ for (const s of sessions) {
     if (!t || String(t.prompt).startsWith("/vibe-explainer")) continue;
     const lesson = readJson(path.join(dir, "lesson.json"));
     let diff = ""; try { diff = fs.readFileSync(path.join(dir, "diff.patch"), "utf8"); } catch { /* none */ }
+    const analysis = t.after ? await ensureAnalysis(store, { projectId: pid, sessionId: s.id, turn: n }, { online: true }) : null;
     const events = store.readEvents(pid, s.id).filter((e) => e.turn === n).map((e) => ({ ...e, transcriptPath: undefined }));
     turns.push({ ...t, hasLesson: !!lesson, lessonTitle: lesson?.title ?? null, claimsNone: lesson ? lesson.claims.filter((c) => c.status === "none").length : 0 });
-    db.turn[`${pid}/${s.id}/${n}`] = clean({ turn: t, events, diff, lesson });
+    db.turn[`${pid}/${s.id}/${n}`] = clean({ turn: t, events, diff, analysis, lesson });
   }
   db.session[`${pid}/${s.id}`] = clean({ session: { ...s, transcriptPath: undefined, cwd: "~/demo-project" }, turns });
 }

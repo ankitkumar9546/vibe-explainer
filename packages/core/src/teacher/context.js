@@ -3,8 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { readJson } from "../store.js";
 import { maskSecrets, maskEnvFilesInPatch } from "./mask.js";
+import { analysisText } from "../analyzer/index.js";
 
-export const BUDGET = { diff: 60000, steps: 12000, agent: 12000 };
+export const BUDGET = { diff: 60000, steps: 12000, agent: 12000, analysis: 8000 };
 
 const clip = (s, n) => (s.length > n ? `${s.slice(0, n)}\n…[cut ${s.length - n} chars]` : s);
 const secs = (from, to) => Math.max(0, Math.round((Date.parse(to) - Date.parse(from)) / 1000));
@@ -72,5 +73,6 @@ export function buildContext(store, { projectId, sessionId, turn }) {
     thinking: maskSecrets(clip(words.thinking.join("\n"), BUDGET.agent)),
     replies: maskSecrets(clip(words.replies.slice(0, -1).join("\n"), BUDGET.agent / 2)),
     finalReply: maskSecrets(clip(finalReply, 4000)),
+    analysis: maskSecrets(clip(analysisText(readJson(path.join(tdir, "analysis.json"))), BUDGET.analysis)),
   };
 }

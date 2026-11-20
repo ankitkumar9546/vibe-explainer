@@ -1,6 +1,6 @@
 export { Store, homeDir, projectIdFor, safeId, readJson, writeJson, FORMAT_VERSION } from "./store.js";
 export { recordHook, truncate, targetOf, MAX_STRING } from "./recorder.js";
-export { takeSnapshot, diffSnapshots, ensureShadow, shadowDir, refFor, SnapshotError, DEFAULT_EXCLUDES } from "./snapshot.js";
+export { takeSnapshot, diffSnapshots, ensureShadow, shadowDir, shadowGit, refFor, SnapshotError, DEFAULT_EXCLUDES } from "./snapshot.js";
 export { snapshotBefore, finishTurn } from "./turns.js";
 export { loadConfig, setConfig, DEFAULTS as CONFIG_DEFAULTS } from "./config.js";
 export { maskSecrets, maskEnvFilesInPatch } from "./teacher/mask.js";
@@ -9,3 +9,7 @@ export { buildPrompt, extractJson, validateLesson } from "./teacher/lesson.js";
 export { teachTurn } from "./teacher/teach.js";
 export { claudeTeacher } from "./teacher/claude.js";
 export { startServer } from "./server.js";
+export { analyzeTurn, ensureAnalysis, analysisText, parsePatch } from "./analyzer/index.js";
+export { findSymbols, enclosing, importsOf, callsIn, langOf } from "./analyzer/symbols.js";
+export { scanAdded, RULES as SECURITY_RULES } from "./analyzer/security.js";
+export { diffPackages, packageFacts, enrichPackages } from "./analyzer/packages.js";

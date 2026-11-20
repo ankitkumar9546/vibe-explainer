@@ -76,7 +76,35 @@ Rules:
 }
 ```
 
-**As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher, mode: manual|auto, level: beg|dev, lang: hi|en, model }`.
+**As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher, mode: manual|auto, level: beg|dev, lang: hi|en, model, registry: on|off }`.
+
+## 4. Analysis (`analysis.json`), written by the analyzer (Phase 6)
+
+```json
+{
+  "v": 1, "createdAt": "…", "after": "<after commit>", "ms": 271,
+  "symbols": [{
+    "file": "src/auth.js", "name": "login", "kind": "function|class|method", "owner": "(methods only) Store",
+    "change": "added|modified|removed", "start": 3, "end": 7,
+    "params": "email, password", "paramsBefore": "(only when signatureChanged) email", "signatureChanged": true,
+    "exported": true, "tested": false, "risk": 3,
+    "reasons": ["used-elsewhere", "signature-changed", "exported", "no-tests"],
+    "callers": [{ "file": "src/pages/LoginPage.js", "line": 4, "text": "…", "kind": "call|import|mention", "in": "onLoginSubmit" }],
+    "calls": [{ "name": "post", "from": "./http.js" }]
+  }],
+  "packages": [{ "eco": "npm|pypi", "name": "zod", "change": "added|removed|changed", "from": null, "to": "^3.23.8", "dev": false, "manifest": "package.json",
+                 "facts": { "license": "MIT", "size": 666000, "weeklyDownloads": 475488459, "description": "…", "version": "3.25.76" }, "factsError": "…" }],
+  "security": [{ "rule": "secret", "severity": "high|medium|low", "file": "server.js", "line": 2, "text": "(masked line)", "inTest": false }],
+  "limits": { "filesCut": false, "symbolsCut": false }
+}
+```
+
+- `after` ties the file to the snapshot it was made from. A different `turn.after.commit` means it is stale, and it is recomputed.
+- `reasons`: `new`, `removed-still-used`, `removed-unused`, `used-elsewhere`, `signature-changed`, `many-callers`, `exported`, `no-tests`, `tested`.
+- `facts` is missing when lookups are off or haven't run yet; `factsError` says why a lookup failed. Sizes are bytes (npm: unpacked; PyPI: the wheel).
+- `security.text` is always masked; `env-file` findings carry no text at all.
+- Limits: 60 files, 30 symbols, 40 callers per symbol.
+- Setting: `registry: on|off` in `config.json` (default `on`).
 
 `health` and `todo` are not written by the teacher. The console computes them from `claims`,
 `impact`, the analysis and the events, so they are always consistent with the evidence.

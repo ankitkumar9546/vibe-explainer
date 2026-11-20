@@ -36,6 +36,12 @@ function git(gitDir, workTree, args, opts = {}) {
   }
 }
 
+/** Run git against a project's shadow repo (read-only uses: show, grep, cat-file). */
+export function shadowGit(home, projectId, args, opts = {}) {
+  const dir = shadowDir(home, projectId);
+  return git(dir, dir, args, { cwd: dir, ...opts });
+}
+
 /** Create the shadow repo once and keep its excludes in step with the project's own. */
 export function ensureShadow(home, projectId, workTree) {
   const dir = shadowDir(home, projectId);

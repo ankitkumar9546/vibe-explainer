@@ -13,7 +13,7 @@ Rules:
 - Use ONLY the evidence below. Never invent files, functions, commands or results. If something cannot be known from the evidence, say so.
 - Claims: take each factual claim in the agent's FINAL REPLY (for example "tests pass", "added X", "it sends an email") and check it against the STEPS and the DIFF. status "backed" = the evidence shows it; "none" = the evidence shows it did not happen (for example no test command ran); "unverified" = it may be true but the evidence cannot show it. "at" = the second (from the STEPS times) of the best evidence, or null.
 - Asks: split the USER PROMPT into what was asked; mark each "done", "part" or "no" with evidence.
-- Impact: what else could be affected by the changed code (other callers, behaviour changes, missing error handling). risk 1 = low, 2 = medium, 3 = high. "prompt" = a short instruction the user could paste to the agent to fix it, or "" when nothing needs fixing.
+- Impact: start from the STATIC ANALYSIS (real callers found in the code, package facts, security patterns); every caller it lists with risk 2 or 3 deserves an impact item. Then add anything else that could be affected by the changed code (other callers, behaviour changes, missing error handling). risk 1 = low, 2 = medium, 3 = high. "prompt" = a short instruction the user could paste to the agent to fix it, or "" when nothing needs fixing.
 - Errors: commands that FAILED during the turn, what the error means in plain words, and how the agent fixed it (or that it did not).
 - decision: if the agent's thinking shows it chose between approaches, describe the options; otherwise null.
 - quiz: 2 or 3 questions about THIS change, each with 3 options and the index of the right one.
@@ -49,6 +49,9 @@ ${ctx.finalReply || "(not available)"}
 
 === FILES CHANGED ===
 ${ctx.files.map((f) => `${f.status} ${f.path} +${f.add ?? "?"} -${f.del ?? "?"}`).join("\n") || "(none)"}
+
+=== STATIC ANALYSIS (found in the code by the tool, not guessed) ===
+${ctx.analysis || "(none)"}
 
 === DIFF ===
 ${ctx.diff || "(no changes)"}

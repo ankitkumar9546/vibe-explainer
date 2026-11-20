@@ -8,9 +8,10 @@ export const DEFAULTS = Object.freeze({
   level: "beg",        // beg | dev
   lang: "hi",          // hi (Hinglish) | en
   model: "",           // optional model name for the teacher
+  registry: "on",      // on: look up new packages on npm / PyPI (licence, size, downloads); off: never go online for that
 });
 
-const ALLOWED = { teacher: ["claude"], mode: ["manual", "auto"], level: ["beg", "dev"], lang: ["hi", "en"] };
+const ALLOWED = { teacher: ["claude"], mode: ["manual", "auto"], level: ["beg", "dev"], lang: ["hi", "en"], registry: ["on", "off"] };
 
 export function loadConfig(home) {
   return { ...DEFAULTS, ...readJson(path.join(home, "config.json"), {}) };
