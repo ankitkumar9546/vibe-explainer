@@ -2,3 +2,9 @@ export { Store, homeDir, projectIdFor, safeId, readJson, writeJson, FORMAT_VERSI
 export { recordHook, truncate, targetOf, MAX_STRING } from "./recorder.js";
 export { takeSnapshot, diffSnapshots, ensureShadow, shadowDir, refFor, SnapshotError, DEFAULT_EXCLUDES } from "./snapshot.js";
 export { snapshotBefore, finishTurn } from "./turns.js";
+export { loadConfig, setConfig, DEFAULTS as CONFIG_DEFAULTS } from "./config.js";
+export { maskSecrets, maskEnvFilesInPatch } from "./teacher/mask.js";
+export { buildContext, stepLines, agentWords } from "./teacher/context.js";
+export { buildPrompt, extractJson, validateLesson } from "./teacher/lesson.js";
+export { teachTurn } from "./teacher/teach.js";
+export { claudeTeacher } from "./teacher/claude.js";

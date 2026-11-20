@@ -22,7 +22,15 @@ node packages/cli/bin/vibe-explainer.js status /path/to/your/project
 ```
 
 `init` adds hooks to your project's `.claude/settings.local.json` (personal, not committed).
-`init --remove` takes them out. Recordings live in `~/.vibe-explainer/`.
+`init --remove` takes them out. Recordings live in `~/.vibe-explainer/`. Your project's own
+`.git` is never written to: before/after snapshots of each prompt live in a separate shadow repo.
+
+Get a lesson for the last prompt (uses your own `claude` CLI, no API key):
+
+```bash
+node packages/cli/bin/vibe-explainer.js explain /path/to/your/project --lang en
+node packages/cli/bin/vibe-explainer.js config set mode auto   # teach after every prompt
+```
 
 ## How it works
 

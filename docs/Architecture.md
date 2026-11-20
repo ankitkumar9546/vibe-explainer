@@ -58,7 +58,13 @@ so a hook starts fast and runs anywhere Node 20+ runs. The console is built with
 - Package diff: added or removed dependencies, with size, licence and weekly downloads from the npm registry (only when online, and the user can turn it off).
 - Security scan of the diff: secret patterns, `eval`, `innerHTML`, raw error passthrough.
 
-### 3.5 Teacher (`core/src/teacher/`), Phase 3
+### 3.5 Teacher (`core/src/teacher/`), Phase 3 (built 11-20)
+Files: `mask.js` (secrets), `context.js` (prompt, step lines, diff, and the agent's thinking and replies from the transcript, within size budgets), `lesson.js` (prompt, JSON extraction, validator), `claude.js` (adapter), `teach.js` (orchestration).
+- The `claude` adapter runs `claude -p --output-format json --max-turns 1` in an empty folder (`~/.vibe-explainer/tmp/teacher`), so the project's CLAUDE.md, settings and hooks don't load. The prompt goes in on stdin. `CLAUDECODE` is cleared and `VIBE_EXPLAINER_INTERNAL=1` is set.
+- Modes (`vibe-explainer config set mode manual|auto`): `manual` (the default) only teaches on `vibe-explainer explain`; `auto` teaches inside `finish-turn` after every prompt.
+- Turn status goes `analysing` → `ready`, or `failed` with `turn.lessonError`.
+
+Original design notes:
 - Adapters: `claude` (`claude -p`, default), `ollama`, `gemini`, `openai`.
 - Input: prompt, events, diff, analysis, level and language. Secrets are masked first (R4).
 - Output: strict JSON (`lesson.json`, schema in `docs/DataFormat.md`), validated. On invalid output it retries once, then marks the lesson as failed with the reason.

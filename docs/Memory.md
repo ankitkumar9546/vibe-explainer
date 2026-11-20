@@ -2,6 +2,18 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (evening): GitHub, CI, Phase 3 teacher
+
+- **GitHub:** `ankitkumar9546/vibe-explainer`, **private** until the Phase 5 demo and Ankit's yes. Ankit asked that every commit be pushed.
+- **CI:** the first run was green on Windows, macOS and Linux. It now tests Node 22 and 24 (Node 20 has reached end of life), with actions v5. The packages require Node `>=22`.
+- **Phase 3, teacher:** `core/src/teacher/` has `mask`, `context`, `lesson`, `claude` and `teach`, plus `core/src/config.js`. The CLI has `explain [dir] [--turn --session --level --lang]` and `config [set k v]`. Mode defaults to `manual` (Ankit's Claude usage). `auto` teaches in `finish-turn`.
+- **Checked:**
+  - `npm test`: 20/20 pass, covering masking, JSON extraction and validation, the context with transcript words, the retry-then-fail path, and a planted key never reaching the teacher.
+  - A real `explain` on the recorded "add add()" turn wrote a valid lesson in 45 s, in Hinglish, with 6 claims checked (5 backed, 1 unverified), 2 impact notes and 3 quiz questions.
+  - The teacher run was not recorded (session count 2 before and after).
+- **Note:** that turn's `diff.patch` was written before the CRLF fix, so the lesson mentions a `}` line. The teacher correctly called it a possible line-ending difference.
+- **Next:** Phase 4, Console v1 (server + Live, Logs, Changes, Learn from real data).
+
 ## 2026-11-20 (later): Phase 2, snapshot + diff; MIT licence
 
 - Ankit chose the **MIT** licence (`LICENSE`, © 2026 Ankit Kumar).

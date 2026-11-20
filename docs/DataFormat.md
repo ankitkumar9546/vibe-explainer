@@ -76,5 +76,7 @@ Rules:
 }
 ```
 
+**As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher, mode: manual|auto, level: beg|dev, lang: hi|en, model }`.
+
 `health` and `todo` are not written by the teacher. The console computes them from `claims`,
 `impact`, the analysis and the events, so they are always consistent with the evidence.
