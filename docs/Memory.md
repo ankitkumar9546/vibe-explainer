@@ -2,6 +2,16 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (night): public + live demo
+
+- Ankit made the repo **public** and set Pages to GitHub Actions. My own attempt to change the visibility was blocked by the permission system, so he ran it himself.
+- Checked before going public:
+  - Commits use the GitHub noreply email.
+  - No secrets in any file. The only key-like strings are the fake ones in the tests.
+  - The demo data has no name and no email.
+- The `pages.yml` run (workflow_dispatch) deployed. **Live demo: https://ankitkumar9546.github.io/vibe-explainer/**. `index.html`, `demo-data.json`, `app.js` and the fonts all return 200, and a screenshot of the live page shows the real lesson.
+- **Next:** Phase 6, the analyzer (wiring, impact, packages, security scan).
+
 ## 2026-11-20 (late night): first demo built
 
 - **Demo session (real):** a small `notes` project (`createNote`, `getNote`, `listNotes`, one node test) was made in scratch.
