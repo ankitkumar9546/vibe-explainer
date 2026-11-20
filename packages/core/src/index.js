@@ -8,3 +8,4 @@ export { buildContext, stepLines, agentWords } from "./teacher/context.js";
 export { buildPrompt, extractJson, validateLesson } from "./teacher/lesson.js";
 export { teachTurn } from "./teacher/teach.js";
 export { claudeTeacher } from "./teacher/claude.js";
+export { startServer } from "./server.js";

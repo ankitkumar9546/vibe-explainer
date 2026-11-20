@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, loadConfig, setConfig, teachTurn, claudeTeacher } from "@vibe-explainer/core";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer } from "@vibe-explainer/core";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -30,6 +30,7 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
   vibe-explainer explain [dir]       write the lesson for the latest finished prompt
         [--turn N] [--session ID] [--level beg|dev] [--lang hi|en]
   vibe-explainer config [set KEY VALUE]   teacher, mode (manual|auto), level, lang, model
+  vibe-explainer open [dir] [--port N] [--no-browser]   open the console in your browser
   vibe-explainer hook                (used by Claude Code; reads a hook payload on stdin)
 `;
 
@@ -41,10 +42,16 @@ switch (cmd) {
       if (raw.trim()) recordHook(JSON.parse(raw), {
         onTurnOpened: (ctx) => snapshotBefore(ctx.store, ctx),
         onTurnClosed: (ctx) => {
-          // "after" snapshot + diff run detached so the agent is never kept waiting.
-          spawn(process.execPath, [BIN, "finish-turn", ctx.projectId, ctx.sessionId, String(ctx.turn)], {
-            detached: true, stdio: "ignore", windowsHide: true, env: process.env,
-          }).unref();
+          // "after" snapshot + diff run right here: the agent has finished, and a detached child
+          // is not safe on Windows (Claude Code ends its child processes when it exits).
+          const t = finishTurn(ctx.store, ctx);
+          // Auto lessons take a minute. Detach them where that is reliable; on Windows the open
+          // console (vibe-explainer open) does it instead.
+          if (t?.after && process.platform !== "win32" && loadConfig(ctx.store.home).mode === "auto") {
+            spawn(process.execPath, [BIN, "explain", ctx.cwd, "--session", ctx.sessionId, "--turn", String(ctx.turn)], {
+              detached: true, stdio: "ignore", env: process.env,
+            }).unref();
+          }
         },
       });
     } catch (err) { logError(err); }
@@ -52,14 +59,9 @@ switch (cmd) {
   }
   case "finish-turn": {
     const [projectId, sessionId, turn] = args;
-    try {
-      const store = new Store();
-      const t = finishTurn(store, { projectId, sessionId, turn: Number(turn) });
-      const cfg = loadConfig(store.home);
-      if (t?.after && cfg.mode === "auto") {
-        await teachTurn(store, { projectId, sessionId, turn: Number(turn) }, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: cfg.level, lang: cfg.lang });
-      }
-    } catch (err) { logError(err); }
+    // Manual repair: redo the "after" snapshot and diff for a turn.
+    try { finishTurn(new Store(), { projectId, sessionId, turn: Number(turn) }); }
+    catch (err) { logError(err); }
     process.exit(0);
   }
   case "explain": {
@@ -87,6 +89,25 @@ switch (cmd) {
     console.log(`\n${l.title}\n${l.summary}\n`);
     for (const c of l.claims) console.log(`  [${c.status}] ${c.text}`);
     console.log(`\n${l.impact.length} impact notes, ${l.quiz.length} quiz questions. Saved: ${res.file} (${Math.round((Date.now() - t0) / 1000)}s)`);
+    break;
+  }
+  case "open": {
+    const flag = (name) => { const i = args.indexOf(`--${name}`); return i >= 0 ? args[i + 1] : undefined; };
+    const store = new Store();
+    const cfg = loadConfig(store.home);
+    const dir = args.find((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1] === "--port"));
+    const staticDir = path.resolve(path.dirname(BIN), "..", "..", "console");
+    const srv = await startServer(store, {
+      staticDir, port: Number(flag("port")) || 4321,
+      onExplain: (ids, o) => teachTurn(store, ids, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: o.level, lang: o.lang }),
+      autoTeach: () => loadConfig(store.home).mode === "auto" ? { level: loadConfig(store.home).level, lang: loadConfig(store.home).lang } : null,
+    });
+    const url = dir ? `${srv.url}&project=${projectIdFor(path.resolve(dir))}` : srv.url;
+    console.log(`vibe-explainer console: ${url}\nOnly this computer can open it. Press Ctrl+C to stop.`);
+    if (!args.includes("--no-browser")) {
+      const opener = process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : process.platform === "darwin" ? ["open", [url]] : ["xdg-open", [url]];
+      try { spawn(opener[0], opener[1], { stdio: "ignore", detached: true, windowsHide: true }).unref(); } catch { /* print only */ }
+    }
     break;
   }
   case "config": {

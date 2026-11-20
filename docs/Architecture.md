@@ -76,7 +76,16 @@ Original design notes:
 - Runs the project's lint and test commands there (taken from `package.json` scripts and confirmed by the user once).
 - "Apply to my project" writes a patch to the real tree only after the user confirms in the UI (R1).
 
-### 3.7 Server (`core/src/server.js`), Phase 4
+### 3.7 Server + console (`core/src/server.js`, `packages/console/`), Phase 4 (built 11-20)
+- **The console has no build step**: plain `index.html`, `app.css` and `app.js` (ES module), with self-hosted fonts (`fonts/`, SIL OFL, fetched by `scripts/fetch-fonts.mjs`). Vite was the plan, but it isn't needed yet.
+- Endpoints: `/api/projects`, `/api/sessions`, `/api/session`, `/api/turn` (turn + events + diff + lesson), `POST /api/explain`, and `/api/stream` (SSE: `ev` per new event, `turns` when any turn changes; it polls every 500 ms).
+- Guards: binds to `127.0.0.1` only, a 36-hex token on every API call (timing-safe compare), a `Host` header allow-list (DNS rebinding), id format checks, and static files confined to the console folder.
+- `vibe-explainer open [dir] [--port] [--no-browser]` starts it and opens the browser. When `mode=auto`, the open server also teaches finished turns, one at a time.
+- Screenshot helpers: `?tab=…&theme=…&nostream=1`.
+
+**Change found in the real check (11-20):** on Windows, Claude Code ends its child processes when it exits, which cut a detached `finish-turn` short. So the "after" snapshot and the diff now run **synchronously in the Stop hook** (0.39 s measured). Auto lessons are detached only on macOS and Linux. On Windows the open console teaches them.
+
+Original design notes:
 - `node:http` on `127.0.0.1:4321`, bound to localhost only.
 - JSON endpoints for sessions, turns, events, diffs, lessons; one SSE stream for live events.
 - Serves the built console.

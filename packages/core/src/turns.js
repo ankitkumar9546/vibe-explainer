@@ -42,6 +42,7 @@ export function finishTurn(store, { projectId, sessionId, turn, now = new Date()
       const { patch, files } = diffSnapshots({ home: store.home, projectId, workTree: session.cwd, from: cur.before.commit, to: after.commit });
       fs.writeFileSync(path.join(store.turnDir(projectId, sessionId, turn), "diff.patch"), patch);
       fields.files = files;
+      fields.snapshotError = undefined; // a successful retry clears an old error
     } else {
       fields.snapshotError = cur.snapshotError ?? "no before snapshot for this turn";
     }

@@ -25,6 +25,12 @@ node packages/cli/bin/vibe-explainer.js status /path/to/your/project
 `init --remove` takes them out. Recordings live in `~/.vibe-explainer/`. Your project's own
 `.git` is never written to: before/after snapshots of each prompt live in a separate shadow repo.
 
+Open the console in your browser (live while the agent works):
+
+```bash
+node packages/cli/bin/vibe-explainer.js open /path/to/your/project
+```
+
 Get a lesson for the last prompt (uses your own `claude` CLI, no API key):
 
 ```bash

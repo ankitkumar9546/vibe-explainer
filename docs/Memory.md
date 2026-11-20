@@ -2,6 +2,27 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (night): Phase 4, console v1
+
+- **Server** (`core/src/server.js`): localhost only, token, Host allow-list, JSON API, SSE stream, `POST /api/explain`, and auto-teach while open (`mode=auto`).
+- **Console** (`packages/console/`, no build step): it follows the approved design (`docs/Design.md`).
+  - Header: project and session pickers, REC pill, theme switch, Hinglish/English, Beginner/Developer.
+  - Prompt rail on the left.
+  - Timeline (thin, opens to four channels, drag to scrub, claim pins).
+  - Tabs: Live, Logs, Changes (diff with line numbers, plus the lesson's notes beside it) and Seekho. Seekho renders the full lesson: asks, claims with timeline jumps, why, how, before/after, decision, errors, impact with copyable fix prompts, concepts, quiz and manual test, plus a "Lesson banao" button.
+  - The fonts are self-hosted.
+- CLI: `vibe-explainer open [dir] [--port N] [--no-browser]`.
+- **Bug found by the real check, then fixed:**
+  - What happened: on Windows a detached `finish-turn` was killed when `claude -p` exited, so the "after" snapshot failed (`update-ref`).
+  - Fix: "after" and the diff now run synchronously in the Stop hook, which took 0.39 s measured.
+  - A successful retry also clears an old `snapshotError`.
+  - The manual `finish-turn` repair compares against the files as they are now, so a late repair includes any later changes.
+- **Checked:**
+  - `npm test`: 22/22 pass (adds the server's token, host, path and stream tests).
+  - Real `claude -p` runs with the console open. Every step arrived over the stream within about 0.5 s, and then "closed +diff".
+  - Screenshots with real data: Seekho in light, Changes and Logs in dark, Live in light.
+- **Next:** Phase 5, the Claude Code plugin (hooks, `/explain`, `/console`, skill). Then the first demo, and the repo goes public on Ankit's yes.
+
 ## 2026-11-20 (evening): GitHub, CI, Phase 3 teacher
 
 - **GitHub:** `ankitkumar9546/vibe-explainer`, **private** until the Phase 5 demo and Ankit's yes. Ankit asked that every commit be pushed.
