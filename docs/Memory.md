@@ -2,6 +2,21 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (later): Phase 2, snapshot + diff; MIT licence
+
+- Ankit chose the **MIT** licence (`LICENSE`, © 2026 Ankit Kumar).
+- **Design change (recorded in Architecture §3.3):** snapshots live in a per-project **shadow bare repo** (`~/.vibe-explainer/shadow/<projectId>.git`) with the project as the work tree, for git projects too. The project's `.git` is never written. The first plan was a temporary index inside the user's repo; dropped because it still writes objects and refs into their repo.
+- `core/src/snapshot.js`: `takeSnapshot`, `diffSnapshots` (with `--ignore-cr-at-eol`, line-ending-only files dropped), a lock, default excludes, and the project's `.git/info/exclude` copied in.
+- `core/src/turns.js`: `snapshotBefore` (synchronous, in the prompt hook) and `finishTurn` ("after" + `diff.patch` + `turn.files`).
+- Recorder: `onTurnOpened` / `onTurnClosed` callbacks. The CLI starts a detached `vibe-explainer finish-turn <projectId> <session> <turn>` after Stop.
+- `init` takes a baseline snapshot (239 ms on the test project). `status` shows each turn's files.
+- **Checked:**
+  - `npm test`: 14/14 pass.
+  - Real `claude -p` in a git project: "add an add() function" → `turn.files` = `app.js +4 −0`, and `diff.patch` matches `git diff`.
+  - The project's `.git` was byte-identical before and after, and `git status` was unchanged apart from the agent's own edit.
+  - The first run showed a CRLF-only line as changed; that was fixed and re-checked on the same turn.
+- **Next:** Phase 3, the teacher (`claude -p` adapter, schema, secret masking, no loop).
+
 ## 2026-11-20: docs, Phase 0, Phase 1
 
 **Decided with Ankit (in chat):**

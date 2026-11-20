@@ -51,7 +51,10 @@ function toolOk(response) {
 /**
  * Record one hook payload.
  * @param {any} payload  JSON from Claude Code (stdin)
- * @param {{store?: Store, env?: NodeJS.ProcessEnv, now?: string}} [opts]
+ * @param {{store?: Store, env?: NodeJS.ProcessEnv, now?: string,
+ *          onTurnOpened?: (ctx: object) => void, onTurnClosed?: (ctx: object) => void}} [opts]
+ *        onTurnOpened runs synchronously after a prompt opens a turn (the "before" snapshot);
+ *        onTurnClosed runs after Stop is written (the CLI starts a detached finish-turn).
  * @returns {object|null} the event written, or null when nothing was recorded
  */
 export function recordHook(payload, opts = {}) {
@@ -86,6 +89,7 @@ export function recordHook(payload, opts = {}) {
       turn = store.openTurn(projectId, sessionId, truncate(String(payload.prompt ?? "")), now);
       event.turn = turn;
       event.prompt = truncate(String(payload.prompt ?? ""));
+      safeCall(opts.onTurnOpened, { store, projectId, sessionId, turn, cwd, now });
       break;
     case "tool_start":
     case "tool_end": {
@@ -109,5 +113,12 @@ export function recordHook(payload, opts = {}) {
   }
 
   store.appendEvent(projectId, sessionId, event);
+  if (kind === "stop") safeCall(opts.onTurnClosed, { store, projectId, sessionId, turn, cwd, now });
   return event;
+}
+
+/** Hooks around a turn must never break recording. */
+function safeCall(fn, ctx) {
+  if (typeof fn !== "function") return;
+  try { fn(ctx); } catch { /* recorded elsewhere (turn.json snapshotError) */ }
 }

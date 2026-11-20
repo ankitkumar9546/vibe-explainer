@@ -98,7 +98,7 @@ switched to Ollama (fully local), Gemini or an OpenAI key.
 | # | Requirement |
 |---|---|
 | R1 | Never write to the user's branch, index, commits or files without an explicit click and a confirmation. |
-| R2 | A hook must never block or slow the agent: it returns in under 100 ms and always exits 0. |
+| R2 | A hook must never block or slow the agent: it returns in under 100 ms and always exits 0. One exception: the prompt hook takes the "before" snapshot synchronously, so it is guaranteed to come before any edit. This takes a few hundred ms. |
 | R3 | The teacher's own `claude -p` run must not be recorded (no loop). |
 | R4 | Secrets (`.env`, keys, tokens) are masked before anything goes to a teacher model. |
 | R5 | All data lives under `~/.vibe-explainer/` (override: `VIBE_EXPLAINER_HOME`). Nothing is written into the user's project. |

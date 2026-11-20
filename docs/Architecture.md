@@ -43,11 +43,13 @@ so a hook starts fast and runs anywhere Node 20+ runs. The console is built with
 - `projects/<projectId>/sessions/<sessionId>/…`, where `projectId` is a short hash of the project's absolute path.
 - Append-only JSONL for events, plain JSON for everything else. There is no database.
 
-### 3.3 Snapshot (`core/src/snapshot.js`), Phase 2
-- Before and after each turn, copy the working tree into a git tree object using a **temporary index file** (`GIT_INDEX_FILE`), so the user's index is never touched.
-- `git write-tree` then `git commit-tree`, stored under `refs/vibe-explainer/<session>/<turn>-<before|after>`.
-- Projects without git get a shadow repo: `~/.vibe-explainer/shadow/<projectId>` with `--work-tree` pointing at the project.
-- The diff is `git diff <before> <after>`, honouring `.gitignore`.
+### 3.3 Snapshot (`core/src/snapshot.js`, `core/src/turns.js`), Phase 2 (built 11-20)
+- **Every project gets a shadow repo**: `~/.vibe-explainer/shadow/<projectId>.git` (bare), used with `GIT_WORK_TREE=<project>`. This applies to git projects too. The project's own `.git` is never written to: no objects, refs, index or config. That is stronger than a temporary index inside the user's repo, which was the first plan.
+- Excludes: the project's `.gitignore` files (git reads them from the work tree), its `.git/info/exclude` (copied in), and a default list (`node_modules/`, `dist/`, `.venv/` …).
+- The shadow repo keeps its own index, so after the first full pass a snapshot only rehashes the files that changed. `init` takes a baseline snapshot to warm it (about 240 ms on a small project).
+- Snapshot: `git add --all` → `write-tree` → `commit-tree`, stored at `refs/vibe-explainer/<session>/<turn>-<before|after>`. A lock (`vibe.lock`) keeps two sessions from sharing the index at the same time.
+- "before" is taken **synchronously** in the `UserPromptSubmit` hook, so it is guaranteed to happen before the agent edits anything. This is the one exception to the 100 ms hook budget (PRD R2). "after" plus the diff run in a detached `finish-turn` process after `Stop`.
+- Diff: `git diff --find-renames --ignore-cr-at-eol`. Files whose only change is line endings are dropped, to match what `git diff` shows the user.
 
 ### 3.4 Analyzer (`core/src/analyzer/`), Phase 6
 - `web-tree-sitter` (WASM) parses changed files: functions, classes, imports, calls.

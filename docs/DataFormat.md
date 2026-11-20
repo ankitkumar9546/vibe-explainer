@@ -23,6 +23,11 @@ The contract between the recorder, the store, the teacher and the console.
 - `projectId`: the first 12 hex characters of `sha256(absolute project path, lower-cased on Windows)`.
 - `sessionId`: Claude Code's `session_id`, or `w-<timestamp>` for `watch` sessions.
 - `turn.status`: `open` | `closed` | `analysing` | `ready` | `failed`.
+- `turn.before` / `turn.after`: `{ commit, at }`, the shadow-repo commit of the work tree (Phase 2).
+- `turn.files`: `[{ path, oldPath?, status: added|modified|deleted|renamed|copied|type-changed, add, del }]`. `add`/`del` are `null` for binary files. Line-ending-only changes are left out.
+- `turn.snapshotError`: present when a snapshot or diff failed (for example, git is not installed). The turn is still recorded.
+- `diff.patch`: unified diff from `before` to `after` (`--find-renames --ignore-cr-at-eol`).
+- Shadow repos: `~/.vibe-explainer/shadow/<projectId>.git`, refs `refs/vibe-explainer/<session>/<turn>-<before|after>` and `refs/vibe-explainer/baseline`.
 
 ## 2. Event (`events.jsonl`)
 
