@@ -17,3 +17,5 @@ export { analyzeTurn, ensureAnalysis, analysisText, parsePatch } from "./analyze
 export { findSymbols, enclosing, importsOf, callsIn, langOf } from "./analyzer/symbols.js";
 export { scanAdded, RULES as SECURITY_RULES } from "./analyzer/security.js";
 export { diffPackages, packageFacts, enrichPackages } from "./analyzer/packages.js";
+export { prepareSandbox, removeSandbox, runInSandbox, runCommand, detectCommands, sandboxSettings, allowSandbox, applyEdit, snapshotFile, sandboxFile, safeRel, sweepSandboxes, sandboxRoot } from "./sandbox.js";
+export { makePlayground, validatePlayground, editTake, lineDiff, diffText } from "./teacher/playground.js";

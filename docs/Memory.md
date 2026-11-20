@@ -2,6 +2,28 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-21 (night): Phase 9, playground
+
+- `core/src/sandbox.js` (sandbox from a snapshot, dependency links, runs, apply guard) and `core/src/teacher/playground.js` (what-if + challenge, edit take, line diff). Server: `/api/sandbox`, `/api/file`, `/api/sandbox/{allow,run,playground,apply,discard}`, `/preview/…`.
+- **Changed from the plan:** a sandbox is a folder filled from the shadow repo, not a git worktree. Junction removal is careful: unlink first, then check, then delete (memory: a worktree with a junction once wiped a real `node_modules`).
+- **New guard for every POST:** JSON content-type and a same-origin check. The console now always sends JSON.
+- The guided lesson has the mockup's **6 steps**: What happened, What changed, Watch out, **Try it**, To-do, Quiz. Developer tabs gain Playground.
+- Real check (scratch project `vx-p9`: notes.js + a test + index.html). A real `claude -p` added `deleteNote` and a Delete button. Its test commands were blocked, so the agent never ran the tests. Then, driven in headless Edge over CDP:
+  - Allow → editing `deleteNote` to drop the guard → real `npm test` failed (`actual: true, expected: false`), and the teacher explained `splice(-1, 1)`.
+  - The apply confirm was shown, then cancelled. "Just for learning" cleared the sandbox.
+  - "Make the questions": 2 what-ifs; one run for real (the test failed, as the teacher expected).
+  - The challenge (`updateNote`) came with the teacher's test, which failed on the untouched file.
+  - The preview showed before (no Delete), after (Delete) and yours.
+  - **The project's hash was identical before and after.** All the sandboxes were cleaned up.
+- **Found and fixed on the way:**
+  - The sandbox's `node --test` inherited `NODE_TEST_CONTEXT` from our own test runner and reported a pass.
+  - Module scripts in the opaque-origin preview needed `access-control-allow-origin`.
+  - The output gist now shows the lines that failed, not the stack trace.
+  - Six step chips and the record button now fit at 390 px.
+- `npm test`: 49/49.
+- Not done: the playground in the static demo (it needs the local tool, and says so). The what-ifs are written in the language that was active when they were made.
+- **Next:** Phase 10, `watch` for other agents.
+
 ## 2026-11-21 (evening): Phase 8, to-do + chat + learning record + export
 
 - New core modules: `todo.js`, `export.js`, `learning.js`, `teacher/chat.js`.

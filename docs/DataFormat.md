@@ -87,6 +87,17 @@ Rules:
 - `answers`: question index → chosen option. The first answer to a question counts.
 - A revision quiz moves the answers into `history` (up to 10 entries) and starts again.
 
+## 3c. Playground (`turns/<n>/playground.json`), Phase 9
+
+```json
+{ "v": 1, "lang": "en", "teacher": "claude", "createdAt": "…", "after": "<after commit>",
+  "whatIf": [{ "q": "…", "options": ["…", "…", "…"], "answer": 1, "file": "notes.js", "find": "exact text, once", "replace": "…", "explain": "…" }],
+  "challenge": { "task": "…", "file": "notes.js", "hints": ["…", "…", "…"], "solution": "…", "test": { "file": "notes.update.test.js", "content": "…" } } }
+```
+
+- `project.json` gains `sandbox: { allowed: true, commands: { test, lint }, allowedAt }` once the user allows sandbox runs for that project.
+- Sandboxes live in `~/.vibe-explainer/sandbox/<projectId>/<id>/` with `<id>.json` (`{ id, commit, links, createdAt }`).
+
 ## 4. Analysis (`analysis.json`), written by the analyzer (Phase 6)
 
 ```json

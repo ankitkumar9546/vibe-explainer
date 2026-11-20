@@ -84,7 +84,17 @@ Original design notes:
 - Always runs with `VIBE_EXPLAINER_INTERNAL=1` (R3).
 - Big diffs: summarise each file first, then write one lesson over the summaries.
 
-### 3.6 Sandbox (`core/src/sandbox.js`), Phase 9
+### 3.6 Sandbox (`core/src/sandbox.js`, `core/src/teacher/playground.js`), Phase 9 (built 11-21)
+- **Not a git worktree (changed from the plan).** A sandbox is a fresh folder under `~/.vibe-explainer/sandbox/<projectId>/<id>`, filled from the shadow repo with a throw-away index (`read-tree` + `checkout-index`), and the learner's edits are written on top. The live project is never read for code, and its `.git` is never used.
+- Dependencies: `node_modules`, `.venv` and `venv` from the project are **linked** (a junction on Windows), not copied, so the tests can run. On removal the links are unlinked first, and the folder is deleted only after a check that no link is left. A deleted folder never follows a link into the project. Caveat: a tool that writes caches into `node_modules` while it runs writes into the real one. The tree we promise not to touch is everything the snapshot tracks.
+- Commands: detected from the snapshot (`package.json` `test`/`lint` scripts, or pytest). Nothing runs until the user allows it per project in the console; the commands can be edited first. The setting is stored as `project.json` `sandbox: { allowed, commands }`. Runs use `shell: true`, `VIBE_EXPLAINER_INTERNAL=1` and `CI=1`, with no `NODE_TEST_CONTEXT`/`NODE_OPTIONS`, a 2-minute timeout (killing the process tree), and keep the last 8 KB of output.
+- Kinds of run (`POST /api/sandbox/run`): `edit` (one file the learner changed; the sandbox is kept for the preview, and the teacher gives a good/warn/bad take from the diff and the real output), `whatif` (the teacher's find/replace), `challenge` (the learner's file plus the teacher's test file), and `ai` (the snapshot as it is). Sandboxes older than a day are swept.
+- **Apply** (`POST /api/sandbox/apply`) needs `confirm: true`, writes one file, keeps its line endings, and refuses when the real file is no longer what the agent left.
+- Teacher (`playground.json`): 2 what-ifs as find/replace on a real file (the find text must match exactly once), and a challenge (task, file, 3 hints, solution, optional test file). Validated, retried once, and broken items are dropped on the retry.
+- **Preview:** `/preview/<previewToken>/<projectId>/<commit | sandbox id>/<path>` serves a static page (`index.html`, `public/` or `src/`) from the before or after snapshot, or from the kept sandbox. It has its own token, separate from the API token. It is served with CSP `sandbox allow-scripts allow-forms; connect-src 'none'` (an opaque origin) and shown in an `<iframe sandbox>`. Dependency folders are never served.
+- **CSRF guard (new for all POSTs):** `content-type: application/json` is required, and an `Origin` other than localhost is refused, so neither a previewed page nor another site can trigger a run or an apply.
+
+Original design notes:
 - A git worktree under `~/.vibe-explainer/sandbox/<projectId>`, checked out at the turn's "after" snapshot.
 - Runs the project's lint and test commands there (taken from `package.json` scripts and confirmed by the user once).
 - "Apply to my project" writes a patch to the real tree only after the user confirms in the UI (R1).

@@ -40,7 +40,9 @@ is recorded under `~/.vibe-explainer/`.
 
 You can also just ask *"what did you change and is it safe?"*. The bundled skill answers from
 the recorded evidence, not from memory. In the console, "Ask this session" does the same, and
-you can click any line of the diff to ask what it does.
+you can click any line of the diff to ask what it does. The playground lets you change the AI's code
+and run the project's own tests on a separate copy. Your files change only if you press Apply and
+confirm.
 
 ## Without the plugin (CLI)
 

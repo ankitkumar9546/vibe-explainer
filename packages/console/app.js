@@ -1,4 +1,4 @@
-// vibe-explainer console (Roadmap Phases 4, 6, 7 and 8): real data from the local server.
+// vibe-explainer console (Roadmap Phases 4 and 6–9): real data from the local server.
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const code = (s) => String(s ?? "").split("`").map((p, i) => (i % 2 ? `<code>${esc(p)}</code>` : esc(p))).join("");
@@ -13,7 +13,7 @@ const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { re
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 const S = {
-  lang: ["hi", "en"].includes(params.get("lang")) ? params.get("lang") : pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "todo", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
+  lang: ["hi", "en"].includes(params.get("lang")) ? params.get("lang") : pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "play", "todo", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
   projects: [], project: params.get("project"), sessions: [], session: params.get("session"),
   turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null, wireSel: null,
 };
@@ -22,7 +22,7 @@ const UI = {
   project: { hi: "Project", en: "Project" }, session: { hi: "Session", en: "Session" },
   turnsHead: { hi: "Prompts (is session ke)", en: "Prompts in this session" },
   chSoch: { hi: "Soch", en: "Thinking" }, chRead: { hi: "Padha", en: "Read" }, chEdit: { hi: "Badla", en: "Edit" }, chRun: { hi: "Chalaya", en: "Run" },
-  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, wiring: { hi: "Wiring", en: "Wiring" }, impact: { hi: "Impact", en: "Impact" }, todo: { hi: "To-do", en: "To-do" }, learn: { hi: "Seekho", en: "Learn" } },
+  tabs: { live: { hi: "Live", en: "Live" }, logs: { hi: "Logs", en: "Logs" }, changes: { hi: "Changes", en: "Changes" }, wiring: { hi: "Wiring", en: "Wiring" }, impact: { hi: "Impact", en: "Impact" }, play: { hi: "Playground", en: "Playground" }, todo: { hi: "To-do", en: "To-do" }, learn: { hi: "Seekho", en: "Learn" } },
   rec: { hi: "Recording", en: "Recording" }, now: { hi: "Abhi", en: "Now" },
   steps: { hi: "kadam", en: "steps" }, files: { hi: "files", en: "files" }, sec: { hi: "sec", en: "s" },
   tl: { hi: "Timeline", en: "Timeline" }, at: { hi: "is pal", en: "at" }, openTl: { hi: "Poori timeline kholo", en: "Open full timeline" }, closeTl: { hi: "Chhoti karo", en: "Collapse" }, follow: { hi: "Live pe wapas", en: "Back to live" },
@@ -65,7 +65,8 @@ async function api(pathname, q = {}, method = "GET", body = null) {
   const u = new URL(pathname, location.origin);
   u.searchParams.set("t", TOKEN);
   for (const [k, v] of Object.entries(q)) if (v != null) u.searchParams.set(k, v);
-  const r = await fetch(u, body ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) } : { method });
+  // every POST is JSON: the server refuses anything else (a cross-origin page can't send it without asking)
+  const r = await fetch(u, method === "POST" ? { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body ?? {}) } : { method });
   const j = await r.json().catch(() => null);
   if (!r.ok && !(j && "ok" in j)) throw new Error(j?.error ?? `${r.status}`);
   return j;
@@ -172,7 +173,7 @@ function head() {
 function nav() {
   if (!S.data || S.view === "record") { $("#nav").innerHTML = ""; return; }
   if (guided()) { $("#nav").innerHTML = stepperNav(); return; }
-  const tabs = ["live", "logs", "changes", "wiring", "impact", "todo", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", todo: "t-todo", learn: "t-seekho" };
+  const tabs = ["live", "logs", "changes", "wiring", "impact", "play", "todo", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", play: "i-run", todo: "t-todo", learn: "t-seekho" };
   $("#nav").innerHTML = `<div class="tabs" role="tablist">${tabs.map((k) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}"><svg class="i"><use href="#${ic[k]}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
 }
 
@@ -182,7 +183,7 @@ function content() {
   if (!S.projects.length) { C.innerHTML = `<div class="empty">${code(T(UI.noData))}</div>`; return; }
   if (S.view === "record") { C.innerHTML = `<div class="panel">${recordView()}</div>`; return; }
   if (!S.data) { C.innerHTML = `<div class="empty">${T(UI.noTurns)}</div>`; return; }
-  C.innerHTML = `<div class="panel">${guided() ? guidedBody() : { live, logs, changes, wiring, impact, todo: todoView, learn }[S.tab]()}</div>`;
+  C.innerHTML = `<div class="panel">${guided() ? guidedBody() : { live, logs, changes, wiring, impact, play: playView, todo: todoView, learn }[S.tab]()}</div>`;
 }
 
 function live() {
@@ -447,7 +448,7 @@ function securityCard() {
 
 /* ---------- guided lesson (Phase 7): steps, health, asks, claims, glossary ---------- */
 const G = {
-  steps: [{ hi: "Kya hua", en: "What happened" }, { hi: "Kya badla", en: "What changed" }, { hi: "Dhyan do", en: "Watch out" }, { hi: "Ab kya karo", en: "To-do" }, { hi: "Quiz", en: "Quiz" }],
+  steps: [{ hi: "Kya hua", en: "What happened" }, { hi: "Kya badla", en: "What changed" }, { hi: "Dhyan do", en: "Watch out" }, { hi: "Khud try karo", en: "Try it" }, { hi: "Ab kya karo", en: "To-do" }, { hi: "Quiz", en: "Quiz" }],
   back: { hi: "Peeche", en: "Back" }, next: { hi: "Aage", en: "Next" }, finish: { hi: "Lesson poora", en: "Finish lesson" }, doneMsg: { hi: "Shabaash! Ye lesson poora ho gaya.", en: "Nice! This lesson is done." },
   timelineChip: { hi: "Timeline pe", en: "On the timeline" }, backToLesson: { hi: "Lesson pe wapas", en: "Back to the lesson" },
   liveNow: { hi: "Abhi live", en: "Live now" }, lessonChip: { hi: "Lesson", en: "Lesson" },
@@ -468,7 +469,7 @@ const CLAIM_ST = { backed: ["ok", "i-ok"], unverified: ["unk", "i-unk"], none: [
 const doneKey = () => `${S.session}/${S.turn}`;
 const loadDone = () => { try { return JSON.parse(localStorage.getItem("vx-done") || "{}"); } catch { return {}; } };
 S.done = loadDone();
-S.step = Math.max(0, Math.min(4, Number(params.get("step")) || 0)); S.bView = null; S.claimsOpen = false;
+S.step = Math.max(0, Math.min(5, Number(params.get("step")) || 0)); S.bView = null; S.claimsOpen = false;
 if (["beg", "dev"].includes(params.get("level"))) S.level = params.get("level");
 
 /* Glossary: everyday words built in, plus the lesson's own concepts (those win). */
@@ -651,7 +652,7 @@ function stepQuiz() {
     ${explainBack()}
   </article>`;
 }
-const STEPS = [stepWhat, () => changes(), stepWatch, () => todoView(), stepQuiz];
+const STEPS = [stepWhat, () => changes(), stepWatch, () => playView(), () => todoView(), stepQuiz];
 const guided = () => S.level === "beg";
 const lessonReady = () => S.data?.turn.status !== "open" && !!S.data?.lesson;
 
@@ -825,6 +826,230 @@ async function showExport(kind) {
 
 UI.record = P8.record;
 
+/* ---------- Phase 9: playground (sandbox edit, what-if, challenge, before/after preview) ---------- */
+const PG = {
+  safe: { hi: "Sandbox: ye ek alag copy hai, tumhara asli code nahi badlega.", en: "Sandbox: this is a separate copy; your real code does not change." },
+  wait: { hi: "Playground prompt khatam hone pe khulega.", en: "The playground opens when the prompt ends." },
+  demo: { hi: "Playground ke liye tool apne computer pe chalana hota hai: ye project ka code ek sandbox mein chalata hai.", en: "The playground needs the tool on your computer: it runs the project's code in a sandbox." },
+  allowHead: { hi: "Pehle ijaazat", en: "Permission first" },
+  allowLede: { hi: "Playground project ke apne commands (tests, lint) ek alag copy mein chalata hai. Ye AI ka likha code chalayega, isliye pehle tum dekh lo ki kaunse commands chalenge:", en: "The playground runs the project's own commands (tests, lint) in a separate copy. That runs the AI's code, so check which commands will run:" },
+  allowBtn: { hi: "Is project ke liye sandbox runs allow karo", en: "Allow sandbox runs for this project" },
+  noCmd: { hi: "Koi test command nahi mili. Upar likh sakte ho (jaise `npm test`), ya khaali chhodo: tab sirf teacher ki raay milegi.", en: "No test command found. Type one above (like `npm test`), or leave it empty: then you only get the teacher's take." },
+  aHead: { hi: "1. Badal ke dekho", en: "1. Change it and see" },
+  aLede: { hi: "AI ki likhi file badlo, phir sandbox mein chalao. Asli tests ka nateeja aur teacher ki raay milegi.", en: "Change a file the AI wrote, then run it in the sandbox. You get the real test result and the teacher's take." },
+  pick: { hi: "Kaunsi file", en: "Which file" },
+  run: { hi: "Sandbox mein chalao", en: "Run in sandbox" }, running: { hi: "Sandbox mein chal raha hai…", en: "Running in the sandbox…" },
+  reset: { hi: "Wapas AI wala code", en: "Back to the AI's code" },
+  raay: { hi: "Teacher ki raay", en: "Teacher's take" }, imp: { hi: "Isse kya affect hoga", en: "What this affects" },
+  noRun: { hi: "Koi command nahi chali (is project ke liye koi test command set nahi hai).", en: "No command ran (no test command is set for this project)." },
+  cmp: { hi: "AI ka version vs tumhara", en: "The AI's version vs yours" }, aiv: { hi: "AI ka", en: "AI's" }, mine: { hi: "Tumhara", en: "Yours" },
+  apply: { hi: "Mere project mein lagao", en: "Apply to my project" }, toPrompt: { hi: "AI ko prompt bana ke do", en: "Turn into a prompt for the AI" }, discard: { hi: "Sirf seekhne ke liye tha", en: "Just for learning" },
+  applyConfirm: { hi: "Ye badlaav tumhare asli project ki is file mein jaayega. Pakka?", en: "This change goes into this file of your real project. Sure?" }, yes: { hi: "Haan, lagao", en: "Yes, apply" }, no: { hi: "Ruko", en: "Wait" },
+  applied: { hi: "Lag gaya. Tumhare project ki file badal gayi; git mein dikhega.", en: "Applied. The file in your project changed; git will show it." },
+  discarded: { hi: "Sandbox saaf kar diya. Asli code waisa hi hai.", en: "Sandbox cleared. Your real code is untouched." },
+  bHead: { hi: "2. Kya hoga agar…?", en: "2. What happens if…?" }, bLede: { hi: "Pehle andaaza lagao, phir sandbox mein asli nateeja dekho.", en: "Guess first, then see the real result in the sandbox." },
+  make: { hi: "Sawaal aur challenge banwao", en: "Make the questions and challenge" }, making: { hi: "Teacher bana raha hai… (lagbhag 1 minute)", en: "The teacher is making them… (about a minute)" },
+  makeNote: { hi: "Teacher tumhare apne `claude` se ye banata hai (thodi plan usage).", en: "The teacher makes these with your own `claude` (a little plan usage)." },
+  check: { hi: "Sandbox mein chala ke dekho", en: "Run it in the sandbox" }, right: { hi: "Teacher ka andaaza bhi yahi tha!", en: "The teacher guessed the same!" }, wrong: { hi: "Teacher ne kuch aur socha tha", en: "The teacher expected something else" },
+  change: { hi: "Badlaav", en: "The change" }, realOut: { hi: "Asli nateeja", en: "The real result" }, pass: { hi: "sab pass", en: "all passed" }, fail: { hi: "fail", en: "failed" },
+  cHead: { hi: "3. Ab tum karo", en: "3. Your turn" }, cCheck: { hi: "Check karo", en: "Check" }, cHint: { hi: "Hint lo", en: "Get a hint" }, cSol: { hi: "Solution dikhao", en: "Show the solution" },
+  cPass: { hi: "Shabaash! Tests pass ho gaye.", en: "Nice! The tests pass." }, cNot: { hi: "Abhi nahi", en: "Not yet" }, cNoTest: { hi: "Is challenge ke liye test nahi hai; teacher ka solution dekh ke milao.", en: "This challenge has no test; compare with the teacher's solution." },
+  dHead: { hi: "4. Pehle vs ab, screen pe", en: "4. Before vs after, on screen" }, dLede: { hi: "Project ka page sandbox mein khulta hai. Click karke dekho.", en: "The project's page opens in a sandbox. Click around." },
+  vBefore: { hi: "AI se pehle", en: "Before the AI" }, vAfter: { hi: "AI ke baad", en: "After the AI" }, vMine: { hi: "Tumhare edit ke baad", en: "After your edit" },
+  vNone: { hi: "Pehle upar 'Badal ke dekho' mein apna version chalao.", en: "Run your version under 'Change it and see' first." },
+};
+const pgKey = () => doneKey();
+S.pgs = {};
+const pgState = () => (S.pgs[pgKey()] ??= { info: null, file: null, code: {}, orig: {}, run: null, running: false, act: null, pred: {}, predRes: {}, ch: { code: null, hints: 0, res: null, sol: false }, view: "after", busy: null, err: null });
+
+function clientDiff(a, b) {
+  const A = a.split("\n"), B = b.split("\n"), n = A.length, m = B.length;
+  if (n * m > 2_000_000) return [...A.map((t) => ["-", t]), ...B.map((t) => ["+", t])];
+  const L = Array.from({ length: n + 1 }, () => new Uint32Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  const out = []; let i = 0, j = 0;
+  while (i < n && j < m) { if (A[i] === B[j]) { out.push([" ", A[i]]); i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) out.push(["-", A[i++]]); else out.push(["+", B[j++]]); }
+  while (i < n) out.push(["-", A[i++]]); while (j < m) out.push(["+", B[j++]]);
+  // keep the changes with two lines around them
+  const keep = new Set(); out.forEach(([s], k) => { if (s !== " ") for (let x = k - 2; x <= k + 2; x++) keep.add(x); });
+  return out.filter((_, k) => keep.has(k));
+}
+const codeLines = (lines) => lines.map(([s, t]) => `<div class="${s === "+" ? "add" : s === "-" ? "del" : ""}"><span class="sg">${s === "+" ? "+" : s === "-" ? "−" : " "}</span><span>${esc(t) || " "}</span></div>`).join("");
+/** The useful part of a command's output: on failure the lines that say what failed, else the last lines. */
+function outputGist(r) {
+  const lines = r.out.trim().split("\n");
+  if (!r.ok) {
+    const keyLines = lines.filter((l) => /^\s*(✖|✗|×|not ok|FAIL|FAILED|E\s|[A-Za-z]*Error\b|AssertionError|actual:|expected:|Expected|Received|\d+ (failed|failing))/.test(l) && !/^\s*✖ failing tests:/.test(l));
+    if (keyLines.length) return [...new Set(keyLines)].slice(0, 12).join("\n");
+  }
+  return lines.slice(-12).join("\n");
+}
+const resultBlocks = (results) => results.length
+  ? `<div class="pgchecks">${results.map((r) => `<div class="${r.ok ? "okc" : "badc"}"><b>${esc(r.name)} · <code>${esc(r.cmd)}</code> · ${r.timedOut ? "timeout" : r.ok ? T(PG.pass) : `${T(PG.fail)} (exit ${r.code})`}</b><pre>${esc(outputGist(r))}</pre><details><summary>${S.lang === "hi" ? "Poora output" : "Full output"}</summary><pre>${esc(r.out.trim())}</pre></details></div>`).join("")}</div>`
+  : `<p class="note2">${T(PG.noRun)}</p>`;
+
+async function pgLoad(force = false) {
+  const st = pgState();
+  if (st.info && !force) return;
+  try {
+    st.info = await api("/api/sandbox", { project: S.project, session: S.session, turn: S.turn });
+    st.file ??= st.info.files.find((f) => /\.(?:[cm]?[jt]sx?|py|vue|svelte|html|css)$/i.test(f)) ?? st.info.files[0] ?? null;
+    if (st.file) await pgFile(st.file);
+    const c = st.info.playground?.challenge;
+    if (c && st.ch.code == null) { await pgFile(c.file); st.ch.code = st.orig[c.file] ?? ""; }
+  } catch (err) { st.err = String(err.message); }
+  content();
+}
+async function pgFile(p) {
+  const st = pgState();
+  if (st.orig[p] != null) return;
+  try { st.orig[p] = (await api("/api/file", { project: S.project, session: S.session, turn: S.turn, path: p })).text; } catch { st.orig[p] = ""; }
+}
+async function pgPost(pathname, body) {
+  return api(pathname, { project: S.project, session: S.session, turn: S.turn }, "POST", body);
+}
+
+function playView() {
+  const t = S.data.turn;
+  if (t.status === "open") return `<div class="empty">${T(PG.wait)}</div>`;
+  if (STATIC) return `<div class="empty">${T(PG.demo)}</div>`;
+  const st = pgState();
+  if (!st.info) { if (!st.err) pgLoad(); return st.err ? `<div class="empty">${esc(st.err)}</div>` : `<div class="empty"><span class="spin dark"></span></div>`; }
+  const info = st.info, allowed = info.settings.allowed;
+  const parts = [`<p class="sandbox big"><svg class="i"><use href="#i-shield"/></svg>${T(PG.safe)}</p>`];
+
+  if (!allowed) {
+    const d = info.detected;
+    parts.push(`<section class="card pg pgallow"><h5>${T(PG.allowHead)}</h5><p class="muted">${T(PG.allowLede)}</p>
+      <label>test <input id="cmdTest" value="${esc(d.test ?? "")}" placeholder="npm test"></label>
+      <label>lint <input id="cmdLint" value="${esc(d.lint ?? "")}" placeholder="npm run lint"></label>
+      ${!d.test ? `<p class="note2">${code(T(PG.noCmd))}</p>` : ""}
+      <div class="pgactions"><button class="primary sm" id="pgAllow"><svg class="i"><use href="#i-ok"/></svg>${T(PG.allowBtn)}</button></div></section>`);
+  }
+
+  /* A: edit and see */
+  if (st.file) {
+    const ed = st.code[st.file] ?? st.orig[st.file] ?? "";
+    const r = st.run && st.run.file === st.file ? st.run : null;
+    const vk = { good: ["ok", "i-ok"], warn: ["unk", "t-impact"], bad: ["bad", "i-bad"] };
+    let A = `<section class="card pg"><h5>${T(PG.aHead)}</h5><p class="muted">${T(PG.aLede)}</p>
+      <div class="pgbar"><label>${T(PG.pick)} <select id="pgPick">${info.files.map((f) => `<option value="${esc(f)}" ${f === st.file ? "selected" : ""}>${esc(f)}</option>`).join("")}</select></label></div>
+      <textarea class="editor" id="pgCode" spellcheck="false" aria-label="Code">${esc(ed)}</textarea>
+      <div class="pgactions"><button class="primary sm" id="pgRun" ${st.running || !allowed ? "disabled" : ""}>${st.running === "edit" ? `<span class="spin"></span>${T(PG.running)}` : `<svg class="i"><use href="#i-run"/></svg>${T(PG.run)}`}</button>
+        <button class="ghost sm" id="pgReset">${T(PG.reset)}</button></div>`;
+    if (r) {
+      const tk = r.take?.ok ? r.take : null;
+      A += `<div class="pgres">${r.error ? `<p class="err">${esc(r.error)}</p>` : `
+        ${tk ? `<div class="raay"><span class="stampx ${vk[tk.verdict][0]}"><svg class="i"><use href="#${vk[tk.verdict][1]}"/></svg>${T(PG.raay)}</span><p>${code(tk.take)}</p></div>` : r.take?.error ? `<p class="err">${esc(r.take.error)}</p>` : ""}
+        ${resultBlocks(r.results)}
+        ${tk?.affects ? `<p class="pgimp"><b>${T(PG.imp)}:</b> ${code(tk.affects)}</p>` : ""}
+        ${r.diffLines.length ? `<div class="cmp"><b>${T(PG.cmp)}</b><div class="cmpgrid"><div><small>${T(PG.aiv)}</small><div class="code mini">${codeLines(r.diffLines.filter(([s]) => s !== "+"))}</div></div><div><small>${T(PG.mine)}</small><div class="code mini">${codeLines(r.diffLines.filter(([s]) => s !== "-"))}</div></div></div></div>
+        <div class="pgactions">${st.act === "confirm" ? `<span class="confirm">${T(PG.applyConfirm)} <code>${esc(r.file)}</code></span><button class="primary sm" id="pgApplyYes">${T(PG.yes)}</button><button class="ghost sm" id="pgApplyNo">${T(PG.no)}</button>`
+          : `<button class="primary sm" id="pgApply" ${st.act === "applied" ? "disabled" : ""}><svg class="i"><use href="#i-ok"/></svg>${T(PG.apply)}</button><button class="ghost sm" data-copy="pgprompt">${S.copied === "pgprompt" ? `<svg class="i"><use href="#i-ok"/></svg>${T(UI.copied)}` : `<svg class="i"><use href="#i-copy"/></svg>${T(PG.toPrompt)}`}</button><button class="ghost sm" id="pgDiscard">${T(PG.discard)}</button>`}</div>` : ""}
+        ${st.act === "applied" ? `<p class="note2">${T(PG.applied)}</p>` : st.act === "discarded" ? `<p class="note2">${T(PG.discarded)}</p>` : st.act?.error ? `<p class="err">${esc(st.act.error)}</p>` : ""}`}</div>`;
+    } else if (st.act === "discarded") A += `<p class="note2">${T(PG.discarded)}</p>`;
+    parts.push(A + "</section>");
+  }
+
+  /* B + C need the teacher's playground.json */
+  const p = info.playground;
+  if (!p) {
+    parts.push(`<section class="card pg"><h5>${T(PG.bHead)} · ${T(PG.cHead)}</h5><p class="muted">${code(T(PG.makeNote))}</p>
+      ${st.err2 ? `<p class="err">${esc(st.err2)}</p>` : ""}<div class="pgactions"><button class="primary sm" id="pgMake" ${st.busy ? "disabled" : ""}>${st.busy === "make" ? `<span class="spin"></span>${T(PG.making)}` : `<svg class="i"><use href="#i-spark"/></svg>${T(PG.make)}`}</button></div></section>`);
+  } else {
+    if (p.whatIf?.length) parts.push(`<section class="card pg"><h5>${T(PG.bHead)}</h5><p class="muted">${T(PG.bLede)}</p>${p.whatIf.map((w, i) => {
+      const pick = st.pred[i], res = st.predRes[i];
+      return `<div class="pred"><p class="pq">${code(w.q)}</p>
+        <div class="code mini">${codeLines([...w.find.replace(/\n$/, "").split("\n").map((l) => ["-", l]), ...(w.replace ? w.replace.replace(/\n$/, "").split("\n").map((l) => ["+", l]) : [])])}</div>
+        <div class="opts">${w.options.map((o, j) => `<button data-pred="${i}:${j}" class="${res && !res.busy ? (j === w.answer ? "right" : j === pick ? "wrong" : "") : j === pick ? "picked" : ""}" ${res && !res.busy ? "disabled" : ""}>${code(o)}</button>`).join("")}</div>
+        ${!res || res.busy ? `<button class="primary sm" data-predrun="${i}" ${pick == null || !allowed || st.running ? "disabled" : ""}>${res?.busy ? `<span class="spin"></span>${T(PG.running)}` : `<svg class="i"><use href="#i-run"/></svg>${T(PG.check)}`}</button>`
+          : `<div class="predres ${pick === w.answer ? "good" : "meh"}"><b>${pick === w.answer ? T(PG.right) : T(PG.wrong)}</b><p>${code(w.explain)}</p><p><b>${T(PG.realOut)}:</b></p>${res.error ? `<p class="err">${esc(res.error)}</p>` : resultBlocks(res.results)}</div>`}</div>`;
+    }).join("")}</section>`);
+    const c = p.challenge;
+    if (c) {
+      const res = st.ch.res;
+      parts.push(`<section class="card pg challenge"><h5>${T(PG.cHead)}</h5><p class="task">${code(c.task)} <code>${esc(c.file)}</code></p>
+        <textarea class="editor" id="chCode" spellcheck="false" aria-label="Challenge code">${esc(st.ch.code ?? "")}</textarea>
+        <div class="pgactions"><button class="primary sm" id="chCheck" ${!allowed || st.running ? "disabled" : ""}>${st.running === "challenge" ? `<span class="spin"></span>${T(PG.running)}` : `<svg class="i"><use href="#i-ok"/></svg>${T(PG.cCheck)}`}</button>
+          ${st.ch.hints < (c.hints ?? []).length ? `<button class="ghost sm" id="chHint"><svg class="i"><use href="#i-unk"/></svg>${T(PG.cHint)} (${st.ch.hints}/${c.hints.length})</button>` : `<button class="ghost sm" id="chSol">${T(PG.cSol)}</button>`}</div>
+        ${st.ch.hints ? `<ol class="hints">${c.hints.slice(0, st.ch.hints).map((h) => `<li>${code(h)}</li>`).join("")}</ol>` : ""}
+        ${st.ch.sol ? `<div class="code mini">${codeLines(String(c.solution).split("\n").map((l) => [" ", l]))}</div>` : ""}
+        ${res ? `<div class="predres ${res.ok ? "good" : "meh"}"><b>${res.ok ? T(PG.cPass) : T(PG.cNot)}</b>${c.test ? "" : `<p>${T(PG.cNoTest)}</p>`}${res.error ? `<p class="err">${esc(res.error)}</p>` : resultBlocks(res.results)}</div>` : ""}</section>`);
+    }
+  }
+
+  /* D: preview, for projects with a static page */
+  const pv = info.preview;
+  if (pv.after || pv.before) {
+    const v = st.view;
+    const src = v === "before" ? (pv.before && `${info.before}/${pv.before}`) : v === "mine" ? (pv.mine && `${pv.mine}/${pv.after ?? pv.before}`) : (pv.after && `${info.commit}/${pv.after}`);
+    parts.push(`<section class="card pg"><h5>${T(PG.dHead)}</h5><p class="muted">${T(PG.dLede)}</p>
+      <div class="pvtabs">${[["before", PG.vBefore], ["after", PG.vAfter], ["mine", PG.vMine]].map(([k, l]) => `<button data-pvview="${k}" aria-pressed="${v === k}">${T(l)}</button>`).join("")}</div>
+      <div class="browser"><div class="bbar"><i></i><i></i><i></i><span>${esc(src ? src.split("/").slice(1).join("/") : "")}</span></div>
+      ${src ? `<iframe title="preview" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" src="/preview/${esc(pv.token)}/${esc(S.project)}/${esc(src)}"></iframe>` : `<div class="bbody"><div class="pvempty">${T(PG.vNone)}</div></div>`}</div></section>`);
+  }
+  return `<div class="pgwrap">${parts.join("")}</div>`;
+}
+
+function pgPromptText() {
+  const st = pgState(), r = st.run; if (!r) return "";
+  const d = r.diffLines.filter(([s]) => s !== " ").map(([s, t]) => `${s === "+" ? "+ " : "- "}${t}`).join("\n");
+  return `${S.lang === "hi" ? `Maine sandbox mein \`${r.file}\` mein ye badlaav try kiya. Isko project mein lagao, phir tests chalao:` : `I tried this change to \`${r.file}\` in a sandbox. Apply it to the project, then run the tests:`}\n\n${d}`;
+}
+
+async function pgClick(b) {
+  const st = pgState();
+  if (b.id === "pgAllow") {
+    try { st.info.settings = await pgPost("/api/sandbox/allow", { commands: { test: $("#cmdTest").value, lint: $("#cmdLint").value } }); } catch (err) { st.err = String(err.message); }
+    content(); return true;
+  }
+  if (b.id === "pgRun") {
+    const file = st.file, text = $("#pgCode").value; st.code[file] = text;
+    st.running = "edit"; st.act = null; content();
+    try {
+      const r = await pgPost("/api/sandbox/run", { kind: "edit", path: file, content: text, lang: S.lang });
+      st.run = r.ok ? { ...r, file, diffLines: clientDiff(st.orig[file] ?? "", text) } : { file, error: r.error, diffLines: [] };
+      if (r.id) st.info.preview.mine = r.id;
+    } catch (err) { st.run = { file, error: String(err.message), diffLines: [] }; }
+    st.running = false; content(); return true;
+  }
+  if (b.id === "pgReset") { delete st.code[st.file]; st.run = null; st.act = null; content(); return true; }
+  if (b.id === "pgApply") { st.act = "confirm"; content(); return true; }
+  if (b.id === "pgApplyNo") { st.act = null; content(); return true; }
+  if (b.id === "pgApplyYes") {
+    try { const r = await pgPost("/api/sandbox/apply", { path: st.run.file, content: st.code[st.run.file], confirm: true }); st.act = r.ok ? "applied" : { error: r.error }; }
+    catch (err) { st.act = { error: String(err.message) }; }
+    content(); return true;
+  }
+  if (b.id === "pgDiscard") {
+    try { await pgPost("/api/sandbox/discard", {}); } catch { /* nothing kept */ }
+    delete st.code[st.run.file]; st.run = null; st.act = "discarded"; st.info.preview.mine = null; content(); return true;
+  }
+  if (b.id === "pgMake") {
+    st.busy = "make"; st.err2 = null; content();
+    try { const r = await pgPost("/api/sandbox/playground", { lang: S.lang }); if (r.ok) { st.info = null; st.busy = null; await pgLoad(true); return true; } st.err2 = r.error; }
+    catch (err) { st.err2 = String(err.message); }
+    st.busy = null; content(); return true;
+  }
+  if (b.dataset.pred) { const [i, j] = b.dataset.pred.split(":").map(Number); st.pred[i] = j; content(); return true; }
+  if (b.dataset.predrun) {
+    const i = +b.dataset.predrun; st.predRes[i] = { busy: true }; st.running = "whatif"; content();
+    try { const r = await pgPost("/api/sandbox/run", { kind: "whatif", index: i }); st.predRes[i] = r.ok ? r : { error: r.error }; } catch (err) { st.predRes[i] = { error: String(err.message) }; }
+    st.running = false; content(); return true;
+  }
+  if (b.id === "chCheck") {
+    st.ch.code = $("#chCode").value; st.running = "challenge"; content();
+    try { const r = await pgPost("/api/sandbox/run", { kind: "challenge", content: st.ch.code }); st.ch.res = r.ok ? { ...r, ok: r.results.length > 0 && r.results.every((x) => x.ok) } : { ok: false, error: r.error }; }
+    catch (err) { st.ch.res = { ok: false, error: String(err.message) }; }
+    st.running = false; content(); return true;
+  }
+  if (b.id === "chHint") { st.ch.code = $("#chCode")?.value ?? st.ch.code; st.ch.hints++; content(); return true; }
+  if (b.id === "chSol") { st.ch.code = $("#chCode")?.value ?? st.ch.code; st.ch.sol = true; content(); return true; }
+  if (b.dataset.pvview) { st.view = b.dataset.pvview; content(); return true; }
+  return false;
+}
+
+
 function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
@@ -898,6 +1123,7 @@ document.addEventListener("click", async (e) => {
   const line = e.target.closest("[data-ask]");
   if (line && !e.target.closest("button,a")) { await askLine(line.dataset.ask, line.dataset.path ?? "", line.querySelector("span:nth-child(3)")?.textContent ?? ""); return; }
   const b = e.target.closest("button,a"); if (!b) return;
+  if (S.data && !STATIC && await pgClick(b)) return;
   if (b.id === "recBtn") { await openRecord(); return; }
   if (b.id === "chatFab") { S.chatOpen = true; chatRender(); setTimeout(() => $("#chatIn")?.focus(), 30); return; }
   if (b.id === "chatClose") { S.chatOpen = false; chatRender(); return; }
@@ -907,7 +1133,7 @@ document.addEventListener("click", async (e) => {
   if (b.dataset.revise) {
     const [sid, n] = b.dataset.revise.split("/");
     try { await api("/api/quiz", { project: S.project, session: sid, turn: n }, "POST", { reset: true }); } catch { /* the step still opens */ }
-    S.view = "turn"; S.level = "beg"; S.step = 4; S.bView = null;
+    S.view = "turn"; S.level = "beg"; S.step = 5; S.bView = null;
     if (sid !== S.session) { S.session = sid; S.sessions = await api("/api/sessions", { project: S.project }); const r = await api("/api/session", { project: S.project, session: sid }); S.turns = r.turns; openStream(); }
     S.turn = +n; S.follow = false; await loadTurn(); return;
   }
@@ -935,7 +1161,7 @@ document.addEventListener("click", async (e) => {
     if (!STATIC) api("/api/quiz", { project: S.project, session: S.session, turn: S.turn }, "POST", { question: +b.dataset.q, answer: +b.dataset.o }).catch(() => {});
   }
   else if (b.dataset.copy) {
-    const k = b.dataset.copy, text = k === "exp" ? S.expText : k.startsWith("td:") ? T((S.data.todo ?? []).find((it) => it.id === k.slice(3))?.prompt) : k === "claimfix" ? claimFixPrompt(S.data.lesson.claims.find((c) => c.status === "none")) : k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k.slice(2)]?.prompt;
+    const k = b.dataset.copy, text = k === "pgprompt" ? pgPromptText() : k === "exp" ? S.expText : k.startsWith("td:") ? T((S.data.todo ?? []).find((it) => it.id === k.slice(3))?.prompt) : k === "claimfix" ? claimFixPrompt(S.data.lesson.claims.find((c) => c.status === "none")) : k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k.slice(2)]?.prompt;
     try { await navigator.clipboard.writeText(text ?? ""); } catch { /* clipboard blocked */ }
     S.copied = k; head(); content(); setTimeout(() => { S.copied = null; head(); content(); }, 1600);
   }
@@ -953,6 +1179,8 @@ function pickNode(e) {
 document.addEventListener("click", (e) => { if (S.tab === "wiring") pickNode(e); });
 document.addEventListener("keydown", (e) => { if (S.tab === "wiring" && (e.key === "Enter" || e.key === " ") && e.target.closest?.("[data-node]")) { e.preventDefault(); pickNode(e); } });
 document.addEventListener("input", (e) => {
+  if (e.target.id === "pgCode") pgState().code[pgState().file] = e.target.value;
+  if (e.target.id === "chCode") pgState().ch.code = e.target.value;
   if (e.target.id === "eb") { const x = (S.eb[doneKey()] ??= {}); x.text = e.target.value; const btn = $("#ebBtn"); if (btn && !x.busy) btn.disabled = x.text.trim().length < 10; }
 });
 document.addEventListener("submit", (e) => {
@@ -963,6 +1191,7 @@ document.addEventListener("keydown", (e) => {
   if (line && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); line.click(); }
 });
 document.addEventListener("change", async (e) => {
+  if (e.target.id === "pgPick") { const st = pgState(); st.file = e.target.value; await pgFile(st.file); content(); return; }
   if (e.target.id === "projectSel") { S.project = e.target.value; S.session = null; S.view = "turn"; await loadSessions(); }
   if (e.target.id === "sessionSel") { S.session = e.target.value; S.view = "turn"; await loadSession(); }
 });
