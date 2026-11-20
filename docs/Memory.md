@@ -2,6 +2,26 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-21 (later): Phase 7, guided lesson
+
+- Beginner level = the mockup's guided lesson: a stepper with **4 steps** (What happened, What changed, Watch out, Quiz). The mockup has 6. "Try it" (playground) comes with Phase 9 and "To-do" with Phase 8. Until then the manual test sits at the end of Quiz.
+- Header for both levels:
+  - **Health** from evidence only: test runs and their result, claims with no evidence, risk from the lesson's impact (or the analysis when there is no lesson), and security findings.
+  - **What you asked for.**
+  - **Claims bar.** It turns into a red alert when a claim has "no evidence", with a generated fix prompt to copy.
+- Watch out = the lesson's impact items (risk meter, where, why, what to do, fix prompt) + packages and security + the wiring map.
+- Glossary: built-in words + the lesson's concepts, as dotted-underline tooltips. Code is never touched.
+- Developer level keeps the tabs. Learn now reuses the step renderers. Asks and claims moved up into the header.
+- Not built (needs a teacher round-trip, so Phase 8): the mockup's "explain it in your own words" box and "ask about a line".
+- **Checked** on the real Phase 6 lesson (scratch store):
+  - Steps 1–4 in light and dark at 1440 px. At 390 px, 4 chips sit in the bottom bar.
+  - The no-evidence alert: one claim was set to "none" in a scratch copy, then restored.
+  - The no-lesson view: write button + diff.
+  - Developer → Learn.
+  - The static demo opens in guided mode ("Safe to keep": its tests ran and passed).
+- `npm test`: 31/31. There are no console unit tests; the console is checked by screenshots.
+- **Next:** Phase 8, to-do + chat + learning record + export.
+
 ## 2026-11-21: Phase 6, analyzer
 
 - `core/src/analyzer/`: `symbols.js`, `security.js`, `packages.js`, `index.js`. It writes `analysis.json` per turn (DataFormat §4), lazily, the first time the console, `explain` or `analyze` asks.

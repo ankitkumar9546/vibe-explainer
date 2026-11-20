@@ -1,4 +1,4 @@
-// vibe-explainer console (Roadmap Phases 4 and 6): real data from the local server.
+// vibe-explainer console (Roadmap Phases 4, 6 and 7): real data from the local server.
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const code = (s) => String(s ?? "").split("`").map((p, i) => (i % 2 ? `<code>${esc(p)}</code>` : esc(p))).join("");
@@ -13,7 +13,7 @@ const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { re
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 const S = {
-  lang: pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
+  lang: ["hi", "en"].includes(params.get("lang")) ? params.get("lang") : pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "wiring", "impact", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
   projects: [], project: params.get("project"), sessions: [], session: params.get("session"),
   turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null, wireSel: null,
 };
@@ -162,11 +162,13 @@ function head() {
   if (!S.data) { H.innerHTML = ""; return; }
   const t = S.data.turn, ev = S.data.events.filter((e) => e.kind === "tool_end").length;
   H.innerHTML = `<h1 class="prompt">${esc(t.prompt)}</h1>
-    <div class="prompt-meta num">${t.status === "open" ? `<span class="livetag">● ${T(UI.now)}</span> · ` : ""}${ev} ${T(UI.steps)} · ${(t.files ?? []).length} ${T(UI.files)} · ${Math.round(duration())}${T(UI.sec)}</div>`;
+    <div class="prompt-meta num">${t.status === "open" ? `<span class="livetag">● ${T(UI.now)}</span> · ` : ""}${ev} ${T(UI.steps)} · ${(t.files ?? []).length} ${T(UI.files)} · ${Math.round(duration())}${T(UI.sec)}</div>
+    ${summaryCard()}${claimBanner()}`;
 }
 
 function nav() {
   if (!S.data) { $("#nav").innerHTML = ""; return; }
+  if (guided()) { $("#nav").innerHTML = stepperNav(); return; }
   const tabs = ["live", "logs", "changes", "wiring", "impact", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", learn: "t-seekho" };
   $("#nav").innerHTML = `<div class="tabs" role="tablist">${tabs.map((k) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}"><svg class="i"><use href="#${ic[k]}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
 }
@@ -176,7 +178,7 @@ function content() {
   if (!TOKEN) { C.innerHTML = `<div class="empty">${code(T(UI.noToken))}</div>`; return; }
   if (!S.projects.length) { C.innerHTML = `<div class="empty">${code(T(UI.noData))}</div>`; return; }
   if (!S.data) { C.innerHTML = `<div class="empty">${T(UI.noTurns)}</div>`; return; }
-  C.innerHTML = `<div class="panel">${{ live, logs, changes, wiring, impact, learn }[S.tab]()}</div>`;
+  C.innerHTML = `<div class="panel">${guided() ? guidedBody() : { live, logs, changes, wiring, impact, learn }[S.tab]()}</div>`;
 }
 
 function live() {
@@ -438,6 +440,239 @@ function securityCard() {
   return `<h3 class="subhead">${T(AN.secHead)}</h3><section class="card seccard">${pkgs}<ul class="checks">${checks}</ul><p class="muted" style="font-size:13px;margin:12px 0 0">${T(AN.scanned)}</p></section>`;
 }
 
+/* ---------- guided lesson (Phase 7): steps, health, asks, claims, glossary ---------- */
+const G = {
+  steps: [{ hi: "Kya hua", en: "What happened" }, { hi: "Kya badla", en: "What changed" }, { hi: "Dhyan do", en: "Watch out" }, { hi: "Quiz", en: "Quiz" }],
+  back: { hi: "Peeche", en: "Back" }, next: { hi: "Aage", en: "Next" }, finish: { hi: "Lesson poora", en: "Finish lesson" }, doneMsg: { hi: "Shabaash! Ye lesson poora ho gaya.", en: "Nice! This lesson is done." },
+  timelineChip: { hi: "Timeline pe", en: "On the timeline" }, backToLesson: { hi: "Lesson pe wapas", en: "Back to the lesson" },
+  liveNow: { hi: "Abhi live", en: "Live now" }, lessonChip: { hi: "Lesson", en: "Lesson" },
+  liveBeg: { hi: "AI abhi kaam kar raha hai. Neeche har kadam aate hi dikhega. Lesson prompt khatam hone ke baad banega.", en: "The AI is working. Each step appears below as it happens. The lesson is written once the prompt ends." },
+  noLessonBeg: { hi: "Lesson banne tak neeche diff dekh sakte ho.", en: "Until the lesson is written, the diff is below." },
+  claimsOk: { hi: "daawe record se match karte hain", en: "claims match the record" }, claimsMix: { hi: "daawe check kiye", en: "claims checked" },
+  allClaims: { hi: "Saare daawe", en: "All claims" }, hideClaims: { hi: "Chhupao", en: "Hide" },
+  badLine: { hi: "AI ne kaha", en: "The AI said" }, badBut: { hi: "par record mein iska saboot nahi hai.", en: "but the record has no evidence for it." },
+  copyFix: { hi: "Fix prompt copy karo", en: "Copy fix prompt" },
+  hOk: { hi: "Rakh sakte ho", en: "Safe to keep" }, hCheck: { hi: "Pehle check karo", en: "Check first" }, hRisk: { hi: "Risky", en: "Risky" }, hWip: { hi: "AI kaam kar raha hai", en: "AI is working" },
+  decHead: { hi: "AI ne ye raasta kyun chuna", en: "Why the AI chose this way" }, chosen: { hi: "Chuna", en: "Chosen" }, notChosen: { hi: "Nahi chuna", en: "Not chosen" },
+  errHead: { hi: "Raaste mein ek error aaya", en: "An error on the way" }, errSimple: { hi: "Simple bhaasha mein", en: "In plain words" }, errFix: { hi: "AI ne kya kiya", en: "What the AI did" },
+  watchNone: { hi: "Teacher ko is badlaav se koi khatra nahi dikha.", en: "The teacher saw no risk in this change." },
+  wiringHead: { hi: "Kaun kisse juda hai", en: "What connects to what" },
+  conceptsHead: { hi: "Is lesson ke concepts", en: "Concepts in this lesson" },
+};
+const CLAIM_ST = { backed: ["ok", "i-ok"], unverified: ["unk", "i-unk"], none: ["bad", "i-bad"] };
+const doneKey = () => `${S.session}/${S.turn}`;
+const loadDone = () => { try { return JSON.parse(localStorage.getItem("vx-done") || "{}"); } catch { return {}; } };
+S.done = loadDone();
+S.step = Math.max(0, Math.min(3, Number(params.get("step")) || 0)); S.bView = null; S.claimsOpen = false;
+if (["beg", "dev"].includes(params.get("level"))) S.level = params.get("level");
+
+/* Glossary: everyday words built in, plus the lesson's own concepts (those win). */
+const GLOSS = {
+  "function": { hi: "Code ka ek naam wala tukda jo kaam karta hai; naam se bulao to chalta hai.", en: "A named piece of code that does a job; call it by name to run it." },
+  "parameter": { hi: "Function ko di jaane wali value ka naam, jaise login(email) mein email.", en: "The name for a value a function receives, like email in login(email)." },
+  "argument": { hi: "Function bulaate waqt di gayi asli value.", en: "The actual value you pass when calling a function." },
+  "variable": { hi: "Ek naam wala dabba jisme value rakhte hain.", en: "A named box that holds a value." },
+  "import": { hi: "Doosri file ya package se cheez apni file mein laana.", en: "Bringing something from another file or package into this one." },
+  "export": { hi: "File ki cheez ko doosri files ke liye khula rakhna.", en: "Making something in a file available to other files." },
+  "module": { hi: "Code ki ek file ya hissa jo apni cheezein export karta hai.", en: "A file or unit of code that exports things." },
+  "async": { hi: "Aisa function jo kisi cheez ka intezaar kar sakta hai, jaise server ka jawab.", en: "A function that can wait for something, like a server reply." },
+  "await": { hi: "Jawab aane tak yahin ruko, phir aage badho.", en: "Wait here for the reply, then carry on." },
+  "promise": { hi: "Ek wada ki value baad mein aayegi (ya error).", en: "A promise that a value (or an error) will arrive later." },
+  "test": { hi: "Chhota code jo check karta hai ki asli code sahi kaam karta hai.", en: "Small code that checks the real code works." },
+  "tests": { hi: "Chhote programs jo check karte hain ki code sahi kaam karta hai.", en: "Small programs that check the code works." },
+  "assert": { hi: "Test mein shart: ye sach hona chahiye, warna test fail.", en: "A check inside a test: this must be true, or the test fails." },
+  "throw": { hi: "Error 'phenkna': kaam rok ke batana ki kuch galat hai.", en: "Raising an error: stop and say something is wrong." },
+  "exception": { hi: "Chalte program mein aaya error jo pakda ja sakta hai.", en: "An error raised while running, which can be caught." },
+  "try/catch": { hi: "Error aaye to program girne ke bajaye use pakad ke sambhaal lo.", en: "Catch an error and handle it instead of crashing." },
+  "API": { hi: "Do programs ke beech baat karne ka tay tareeka.", en: "An agreed way for two programs to talk." },
+  "request": { hi: "App ka server ko bheja gaya sandesh.", en: "A message the app sends to the server." },
+  "response": { hi: "Server ka wapas bheja jawab.", en: "The server's reply." },
+  "server": { hi: "Doosra computer jo app ki requests sunta hai aur jawab deta hai.", en: "Another computer that receives the app's requests and replies." },
+  "endpoint": { hi: "Server ka ek address jahan request bhejte hain, jaise /api/login.", en: "A server address you send requests to, like /api/login." },
+  "JSON": { hi: "Data likhne ka text format: { \"naam\": \"value\" }.", en: "A text format for data: { \"name\": \"value\" }." },
+  "database": { hi: "Data ko pakka rakhne ki jagah.", en: "A place that stores data permanently." },
+  "package": { hi: "Doosron ka likha code jo project mein install karke use karte hain.", en: "Code written by others that you install and use in your project." },
+  "dependency": { hi: "Wo package jiske bina project nahi chalta.", en: "A package the project needs in order to run." },
+  "diff": { hi: "Pehle aur ab ke code ka fark: + naya, − hataya.", en: "The difference between old and new code: + added, − removed." },
+  "commit": { hi: "Git mein code ki ek save ki hui tasveer.", en: "A saved snapshot of the code in git." },
+  "component": { hi: "UI ka ek tukda jise baar-baar use kar sakte ho.", en: "A reusable piece of UI." },
+  "hook": { hi: "React mein dobara use hone wala logic ka tukda (naam 'use' se shuru).", en: "A reusable piece of React logic (its name starts with 'use')." },
+  "route": { hi: "Ek address (jaise /reset) aur us pe khulne wala page.", en: "An address (like /reset) and the page it opens." },
+  "string": { hi: "Text wali value, jaise \"hello\".", en: "A text value, like \"hello\"." },
+  "array": { hi: "Values ki list, jaise [1, 2, 3].", en: "A list of values, like [1, 2, 3]." },
+  "object": { hi: "Naam-value jodon ka dabba, jaise { id: 1 }.", en: "A box of name-value pairs, like { id: 1 }." },
+  "class": { hi: "Ek saancha jisse milte-julte objects bante hain.", en: "A template for making similar objects." },
+  "method": { hi: "Kisi object ya class ka function.", en: "A function that belongs to an object or class." },
+  "callback": { hi: "Function jo doosre function ko diya jaata hai, baad mein chalne ke liye.", en: "A function handed to another function to run later." },
+  "validation": { hi: "Check karna ki di gayi value sahi hai, jaise khaali na ho.", en: "Checking a value is acceptable, for example not empty." },
+  "localStorage": { hi: "Browser ki chhoti tijori jisme data page band karne ke baad bhi rehta hai.", en: "The browser's small store that keeps data after the page closes." },
+  "token": { hi: "Ek secret text jo batata hai ki tum kaun ho (login ke baad milta hai).", en: "A secret string that proves who you are (given after login)." },
+  "regex": { hi: "Text mein pattern dhoondhne ka chhota formula.", en: "A short formula for finding patterns in text." },
+  "lint": { hi: "Ek tool jo code ki galtiyan aur gandagi pakadta hai, chalaye bina.", en: "A tool that spots mistakes and mess in code without running it." },
+  "status": { hi: "Server ke jawab ka number: 200 = theek, 401 = login galat, 500 = server mein gadbad.", en: "The reply's number: 200 = OK, 401 = bad login, 500 = server problem." },
+  "npm": { hi: "JavaScript packages install karne ka tool.", en: "The tool that installs JavaScript packages." },
+};
+let glossCache = null;
+function glossary() {
+  const l = S.data?.lesson, key = `${doneKey()}/${S.lang}/${l?.createdAt ?? ""}`;
+  if (glossCache?.key === key) return glossCache;
+  const map = new Map();
+  for (const [k, v] of Object.entries(GLOSS)) map.set(k.toLowerCase(), { word: k, def: T(v) });
+  for (const c of l?.concepts ?? []) {
+    const name = String(c.name ?? "").replace(/[`()]/g, "").trim();
+    if (name && name.length <= 40 && !/\s{2,}/.test(name)) map.set(name.toLowerCase(), { word: name, def: String(c.explain ?? "").replace(/`/g, "") });
+  }
+  const words = [...map.values()].map((m) => m.word).sort((a, b) => b.length - a.length).map((w) => w.replace(/[.*+?^${}()|[\]\\/]/g, "\\function learn() {"));
+  glossCache = { key, map, re: words.length ? new RegExp(`(^|[^A-Za-z0-9_$/.-])(${words.join("|")})(?![A-Za-z0-9_$])`, "gi") : null };
+  return glossCache;
+}
+/** Text with `code` spans and glossary terms (each term underlined once per call). */
+function gl(text) {
+  const { map, re } = glossary(); const seen = new Set();
+  return String(text ?? "").split("`").map((p, i) => {
+    if (i % 2) return `<code>${esc(p)}</code>`;
+    const e = esc(p);
+    if (!re) return e;
+    return e.replace(re, (m, pre, w) => {
+      const g = map.get(w.toLowerCase()); if (!g || seen.has(g.word.toLowerCase())) return m;
+      seen.add(g.word.toLowerCase());
+      return `${pre}<span class="term" tabindex="0" data-def="${esc(g.def)}">${w}</span>`;
+    });
+  }).join("");
+}
+
+/** The verdict at the top: from tests run, claims, impact and security, never from the AI's own words. */
+function health() {
+  const t = S.data.turn, l = S.data.lesson, a = S.data.analysis;
+  if (t.status === "open") return { k: "wip", why: [{ hi: "Prompt khatam hone pe faisla aayega", en: "The verdict comes when the prompt ends" }] };
+  const why = []; let k = "ok";
+  const runs = S.data.events.filter((e) => e.kind === "tool_end" && /^(Bash|PowerShell)$/.test(e.tool) && /\b(test|tests|pytest|vitest|jest|mocha)\b/i.test(e.target ?? ""));
+  const files = (t.files ?? []).length;
+  if (runs.length) {
+    if (runs.at(-1).ok === false) { why.push({ hi: "Aakhri test run fail hua", en: "The last test run failed" }); k = "check"; }
+    else why.push({ hi: "Tests chale aur pass hue", en: "Tests ran and passed" });
+  } else if (files) { why.push({ hi: "Is prompt mein koi test nahi chala", en: "No test ran in this prompt" }); k = "check"; }
+  const none = (l?.claims ?? []).filter((c) => c.status === "none").length;
+  if (none) { why.push({ hi: `${none} daawa bina saboot`, en: `${none} claim${none > 1 ? "s" : ""} without evidence` }); k = "check"; }
+  const imp = l ? l.impact.map((m) => m.risk) : (a?.symbols ?? []).filter((s) => s.change !== "added").map((s) => s.risk);
+  const risky = imp.filter((r) => r >= 2).length;
+  if (risky) { why.push({ hi: `${risky} jagah risk (Beech ya zyada)`, en: `${risky} medium-or-higher risk${risky > 1 ? "s" : ""}` }); k = "check"; }
+  const sec = (a?.security ?? []).length, high = (a?.security ?? []).filter((x) => x.severity === "high").length;
+  if (sec) { why.push({ hi: `${sec} security baat dhyan dene layak`, en: `${sec} security note${sec > 1 ? "s" : ""}` }); if (high) k = "check"; }
+  if (imp.some((r) => r >= 3) || high) k = "risk";
+  if (k === "ok" && !why.length) why.push({ hi: "Koi risk ya adhoora daawa nahi", en: "No risks or open claims" });
+  return { k, why };
+}
+
+function summaryCard() {
+  const h = health(), asks = S.data.lesson?.asks ?? [];
+  const hl = { ok: G.hOk, check: G.hCheck, risk: G.hRisk, wip: G.hWip }[h.k];
+  const hic = { ok: "i-ok", check: "t-impact", risk: "i-bad", wip: "t-live" }[h.k];
+  const aic = { done: "i-ok", part: "i-half", no: "i-bad" };
+  return `<section class="summary ${asks.length ? "" : "solo"}">
+    <div class="health h-${h.k}"><div class="hv"><svg class="i"><use href="#${hic}"/></svg>${T(hl)}</div><ul>${h.why.map((w) => `<li>${esc(T(w))}</li>`).join("")}</ul></div>
+    ${asks.length ? `<div class="asks"><h4>${T(UI.asked)}</h4><ul>${asks.map((a) => `<li class="a-${esc(a.status)}"><span class="aic"><svg class="i"><use href="#${aic[a.status] ?? "i-unk"}"/></svg></span><div><b>${gl(a.text)}</b><small>${gl(a.evidence)}</small></div></li>`).join("")}</ul></div>` : ""}
+  </section>`;
+}
+
+function claimFixPrompt(c) {
+  return S.lang === "hi"
+    ? `Tumne kaha: "${c.text}". Par record mein iska saboot nahi hai (${c.evidence}). Isko sach mein karke dikhao, ya bata do ki ye nahi hua.`
+    : `You said: "${c.text}". The record has no evidence for it (${c.evidence}). Please actually do it and show the result, or say that it didn't happen.`;
+}
+function claimBanner() {
+  const cl = S.data.lesson?.claims ?? []; if (!cl.length) return "";
+  const n = { backed: 0, unverified: 0, none: 0 }; cl.forEach((c) => { n[c.status] = (n[c.status] ?? 0) + 1; });
+  const bad = cl.find((c) => c.status === "none");
+  const toggle = `<button class="ghost sm" id="claimsToggle">${S.claimsOpen ? T(G.hideClaims) : `${T(G.allClaims)} (${cl.length})`}</button>`;
+  const pill = (k, cls, ic) => (n[k] ? `<span class="stampx ${cls}"><svg class="i"><use href="#${ic}"/></svg>${n[k]}</span>` : "");
+  const counts = `<span class="cpills">${pill("backed", "ok", "i-ok")}${pill("unverified", "unk", "i-unk")}${pill("none", "bad", "i-bad")}</span>`;
+  const html = bad
+    ? `<div class="alert"><div class="alert-top"><span class="alert-ic"><svg class="i"><use href="#i-bad"/></svg></span>
+        <p>${T(G.badLine)} <q>${esc(bad.text)}</q> ${T(G.badBut)} <span class="muted">${code(bad.evidence)}</span></p></div>
+        <div class="alert-actions"><button class="ghost sm" data-copy="claimfix">${S.copied === "claimfix" ? `<svg class="i"><use href="#i-ok"/></svg>${T(UI.copied)}` : `<svg class="i"><use href="#i-copy"/></svg>${T(G.copyFix)}`}</button>${counts}${toggle}</div></div>`
+    : `<div class="cbar ${n.unverified ? "mix" : "good"}"><svg class="i"><use href="#i-ok"/></svg><span><b>${n.backed}/${cl.length}</b> ${T(n.unverified ? G.claimsMix : G.claimsOk)}</span>${counts}${toggle}</div>`;
+  return html + (S.claimsOpen ? findings() : "");
+}
+function findings() {
+  return `<section class="findings"><div class="claimrow">${S.data.lesson.claims.map((c, i) => {
+    const [cls, ic] = CLAIM_ST[c.status] ?? CLAIM_ST.unverified;
+    return `<div class="claim ${esc(c.status)}"><span class="stampx ${cls}"><svg class="i"><use href="#${ic}"/></svg>${T(UI.st[c.status])}</span>
+      <div><span class="k">${pad(i + 1)}</span><q>${esc(c.text)}</q></div>
+      <div class="ev">${code(c.evidence)}${Number.isFinite(c.at) ? `<br><a data-jump="${c.at}">${T(UI.showTl)} → ${mmss(c.at)}</a>` : ""}</div></div>`;
+  }).join("")}</div></section>`;
+}
+
+/* the steps */
+function stepWhat() {
+  const l = S.data.lesson;
+  const errs = (l.errors ?? []).map((e) => `<section class="card errcard"><h5>${T(G.errHead)}</h5>
+      <div class="errline"><code>${esc(e.command)}</code><span class="res-x">${S.lang === "hi" ? "fail" : "failed"}</span>${Number.isFinite(e.at) ? `<a data-jump="${e.at}">${T(UI.showTl)} → ${mmss(e.at)}</a>` : ""}</div>
+      <div class="errbox"><b>${T(G.errSimple)}</b><p>${gl(e.simple)}</p><b>${T(G.errFix)}</b><p>${gl(e.fix)}</p></div></section>`).join("");
+  const d = l.decision;
+  return `<article class="lesson">
+    <section class="card hero"><h5>${T(UI.lWhat)}</h5><p class="big">${code(l.title)}</p><p style="margin-top:8px">${gl(l.summary)}</p></section>
+    <section class="card"><h5>${T(UI.lWhy)}</h5><p>${gl(l.why)}</p></section>
+    ${l.how?.length ? `<section class="card"><h5>${T(UI.lHow)}</h5><div class="steps">${l.how.map((s, i) => `<p>${i + 1}. ${gl(s)}</p>`).join("")}</div></section>` : ""}
+    <section class="card"><h5>${T(UI.lBA)}</h5><div class="ba"><div><b>${T(UI.before)}</b>${gl(l.before)}</div><div><b>${T(UI.after)}</b>${gl(l.after)}</div></div></section>
+    ${d ? `<section class="card decision"><h5>${T(G.decHead)}</h5><p class="dq">${gl(d.question)}</p>
+      <div class="dopts">${d.options.map((o) => `<div class="dopt ${o.chosen ? "pick" : ""}"><span class="dtag">${o.chosen ? `<svg class="i"><use href="#i-ok"/></svg>${T(G.chosen)}` : T(G.notChosen)}</span><b>${code(o.text)}</b><p>${gl(o.why)}</p></div>`).join("")}</div>
+      ${d.quote ? `<p class="dquote">${code(d.quote)}</p>` : ""}</section>` : ""}
+    ${errs}
+  </article>`;
+}
+function lessonImpact() {
+  const l = S.data.lesson;
+  if (!l.impact.length) return `<div class="empty">${T(G.watchNone)}</div>`;
+  return `<ul class="ilist">${l.impact.slice().sort((a, b) => b.risk - a.risk).map((m) => {
+    const i = l.impact.indexOf(m);
+    return `<li><div class="rlevel">${T(AN.risk[m.risk])}<span class="meter l${m.risk}"><i></i><i></i><i></i></span></div>
+      <div><h5>${gl(m.title)}</h5>${m.where ? `<div class="where">${esc(m.where)}</div>` : ""}<div>${gl(m.why)}</div>${m.fix ? `<div class="fix"><b>${T(AN.todo)}</b> ${gl(m.fix)}</div>` : ""}
+      ${m.prompt ? `<div class="fixprompt"><div class="fp-head"><svg class="i"><use href="#i-msg"/></svg>${T(AN.fix)}</div><p>${code(m.prompt)}</p>
+        <button class="ghost sm" data-copy="li${i}">${S.copied === `li${i}` ? T(AN.copied) : `<svg class="i"><use href="#i-copy"/></svg>${T(AN.copy)}`}</button></div>` : ""}</div></li>`;
+  }).join("")}</ul>`;
+}
+function stepWatch() {
+  const a = S.data.analysis;
+  return `<div class="watch">${lessonImpact()}${a && !a.error ? `${securityCard()}<h3 class="subhead">${T(G.wiringHead)}</h3>${wiring()}` : ""}</div>`;
+}
+function stepQuiz() {
+  const l = S.data.lesson, qs = S.quiz[doneKey()] ?? {};
+  const right = Object.entries(qs).filter(([i, v]) => l.quiz[i]?.answer === v).length;
+  return `<article class="lesson">
+    ${l.concepts?.length ? `<section class="card"><h5>${T(G.conceptsHead)}</h5><div class="concepts">${l.concepts.map((c) => `<details><summary><svg class="i"><use href="#i-chev"/></svg><code>${esc(c.name)}</code></summary><div>${gl(c.explain)}</div></details>`).join("")}</div></section>` : ""}
+    ${l.quiz?.length ? `<section class="card quiz"><h5>${T(UI.quiz)}</h5>${l.quiz.map((q, i) => { const ans = qs[i]; return `<div class="q"><p>${i + 1}. ${code(q.q)}</p><div class="opts">${q.options.map((o, j) => `<button data-q="${i}" data-o="${j}" class="${ans == null ? "" : j === q.answer ? "right" : j === ans ? "wrong" : ""}" ${ans != null ? "disabled" : ""}>${code(o)}</button>`).join("")}</div>${ans != null ? `<div class="qexp">${gl(q.explain)}</div>` : ""}</div>`; }).join("")}
+      <div class="score num">${S.lang === "hi" ? "Sahi" : "Correct"}: ${right} / ${l.quiz.length}</div></section>` : ""}
+    ${l.manualTest?.steps?.length ? `<section class="card manual"><h5>${T(UI.manual)}</h5><ol>${l.manualTest.steps.map((s) => `<li>${gl(s)}</li>`).join("")}</ol><div class="expect"><b>${T(UI.expect)}</b><br>${gl(l.manualTest.expect)}</div></section>` : ""}
+  </article>`;
+}
+const STEPS = [stepWhat, () => changes(), stepWatch, stepQuiz];
+const guided = () => S.level === "beg";
+const lessonReady = () => S.data?.turn.status !== "open" && !!S.data?.lesson;
+
+function stepperNav() {
+  if (!lessonReady()) {
+    const open = S.data.turn.status === "open";
+    return `<div class="stepper"><button class="stepchip on" aria-current="step"><span class="sn"><svg class="i"><use href="#${open ? "t-live" : "t-seekho"}"/></svg></span><span>${T(open ? G.liveNow : G.lessonChip)}</span></button></div>`;
+  }
+  const done = !!S.done[doneKey()], last = STEPS.length - 1;
+  const chips = G.steps.map((s, i) => {
+    const st = S.bView ? "" : i === S.step ? "on" : i < S.step || done ? "done" : "";
+    return `<button class="stepchip ${st}" data-step="${i}" ${st === "on" ? 'aria-current="step"' : ""}><span class="sn">${(i < S.step || done) && i !== S.step ? '<svg class="i"><use href="#i-ok"/></svg>' : i + 1}</span><span>${T(s)}</span></button>`;
+  }).join("");
+  return `<div class="stepper">${chips}${S.bView ? `<button class="stepchip on" aria-current="step"><span class="sn"><svg class="i"><use href="#t-live"/></svg></span><span>${T(G.timelineChip)}</span></button>` : ""}<span class="bar"><i style="width:${S.bView ? 0 : ((done ? last : S.step) / last) * 100}%"></i></span></div>`;
+}
+function guidedBody() {
+  const t = S.data.turn;
+  if (t.status === "open") return `<p class="hint">${T(G.liveBeg)}</p>${live()}`;
+  if (!S.data.lesson) return `${learn()}<p class="hint" style="margin-top:22px">${T(G.noLessonBeg)}</p>${changes()}`;
+  if (S.bView === "live") return `<button class="ghost" id="backLesson">← ${T(G.backToLesson)}</button><div style="margin-top:14px">${live()}</div>`;
+  const last = S.step === STEPS.length - 1, done = !!S.done[doneKey()];
+  return `${STEPS[S.step]()}
+    <div class="stepnav">${S.step > 0 ? `<button class="ghost" data-go="${S.step - 1}">← ${T(G.back)}</button>` : "<span></span>"}
+    ${last ? `<button class="primary" id="finishBtn">${done ? `<svg class="i"><use href="#i-ok"/></svg> ${T(G.doneMsg)}` : T(G.finish)}</button>` : `<button class="primary" data-go="${S.step + 1}">${T(G.next)}: ${T(G.steps[S.step + 1])} →</button>`}</div>`;
+}
+
 function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
@@ -448,26 +683,8 @@ function learn() {
       ${t.status === "failed" && t.lessonError ? `<p class="err">${T(UI.teachFail)} ${esc(t.lessonError)}</p>` : ""}
       <button class="primary" id="teachBtn"><svg class="i"><use href="#i-spark"/></svg>${t.status === "failed" ? T(UI.retry) : T(UI.teachBtn)}</button></div>`;
   }
-  const qs = S.quiz[`${S.session}/${S.turn}`] ?? {};
-  const ic = { done: "i-ok", part: "i-half", no: "i-bad", backed: "i-ok", unverified: "i-unk", none: "i-bad" };
-  const P = (k) => `<span class="ic"><svg class="i"><use href="#${ic[k]}"/></svg></span>`;
-  const rl = { 1: { hi: "Kam", en: "Low" }, 2: { hi: "Beech", en: "Medium" }, 3: { hi: "Zyada", en: "High" } };
-  return `<article class="lesson">
-    <section class="card hero"><h5>${T(UI.lWhat)}</h5><p class="big">${code(l.title)}</p><p class="muted" style="margin-top:8px">${code(l.summary)}</p></section>
-    ${l.asks?.length ? `<section class="card"><h5>${T(UI.asked)}</h5><ul class="rows">${l.asks.map((a) => `<li class="s-${esc(a.status)}">${P(a.status)}<div><b>${code(a.text)}</b><small>${code(a.evidence)}</small></div></li>`).join("")}</ul></section>` : ""}
-    ${l.claims?.length ? `<section class="card"><h5>${T(UI.claims)}</h5><ul class="rows">${l.claims.map((c) => `<li class="s-${esc(c.status)}">${P(c.status)}<div><b>${code(c.text)}</b><small>${T(UI.st[c.status])} · ${code(c.evidence)}${Number.isFinite(c.at) ? ` · <a data-jump="${c.at}">${T(UI.showTl)} → ${mmss(c.at)}</a>` : ""}</small></div></li>`).join("")}</ul></section>` : ""}
-    <section class="card"><h5>${T(UI.lWhy)}</h5><p>${code(l.why)}</p></section>
-    ${l.how?.length ? `<section class="card"><h5>${T(UI.lHow)}</h5><div class="steps">${l.how.map((s, i) => `<p>${i + 1}. ${code(s)}</p>`).join("")}</div></section>` : ""}
-    <section class="card"><h5>${T(UI.lBA)}</h5><div class="ba"><div><b>${T(UI.before)}</b>${code(l.before)}</div><div><b>${T(UI.after)}</b>${code(l.after)}</div></div></section>
-    ${l.decision ? `<section class="card"><h5>${T(UI.decision)}</h5><p><b>${code(l.decision.question)}</b></p><ul class="rows">${l.decision.options.map((o) => `<li class="s-${o.chosen ? "done" : "part"}">${P(o.chosen ? "done" : "part")}<div><b>${code(o.text)}</b><small>${code(o.why)}</small></div></li>`).join("")}</ul>${l.decision.quote ? `<p class="muted" style="margin-top:10px"><i>${code(l.decision.quote)}</i></p>` : ""}</section>` : ""}
-    ${l.errors?.length ? `<section class="card"><h5>${T(UI.errors)}</h5><ul class="rows">${l.errors.map((e) => `<li class="s-none">${P("none")}<div><b><code>${esc(e.command)}</code></b><small>${code(e.simple)}</small><small>${code(e.fix)}</small></div></li>`).join("")}</ul></section>` : ""}
-    ${l.impact?.length ? `<section class="card"><h5>${T(UI.impact)}</h5><ul class="rows impact">${l.impact.map((m, i) => `<li><div><b>${code(m.title)}<span class="meter l${m.risk}"><i></i><i></i><i></i></span> <small style="display:inline">${T(rl[m.risk])}</small></b><small><code>${esc(m.where)}</code></small><p>${code(m.why)}</p><p class="muted">${code(m.fix)}</p>
-      ${m.prompt ? `<div class="fixprompt"><b style="color:var(--action)">${T(UI.fix)}</b><p>${esc(m.prompt)}</p><button class="ghost sm" data-copy="${i}">${S.copied === String(i) ? T(UI.copied) : `<svg class="i"><use href="#i-copy"/></svg>${T(UI.copy)}`}</button></div>` : ""}</div></li>`).join("")}</ul></section>` : ""}
-    ${l.concepts?.length ? `<section class="card"><h5>${T(UI.concepts)}</h5><div class="concepts">${l.concepts.map((c) => `<details><summary><svg class="i"><use href="#i-chev"/></svg><code>${esc(c.name)}</code></summary><div>${code(c.explain)}</div></details>`).join("")}</div></section>` : ""}
-    ${l.quiz?.length ? `<section class="card"><h5>${T(UI.quiz)}</h5>${l.quiz.map((q, i) => { const ans = qs[i]; return `<div class="q"><p>${i + 1}. ${code(q.q)}</p><div class="opts">${q.options.map((o, j) => `<button data-q="${i}" data-o="${j}" class="${ans == null ? "" : j === q.answer ? "right" : j === ans ? "wrong" : ""}" ${ans != null ? "disabled" : ""}>${code(o)}</button>`).join("")}</div>${ans != null ? `<div class="qexp">${code(q.explain)}</div>` : ""}</div>`; }).join("")}</section>` : ""}
-    ${l.manualTest?.steps?.length ? `<section class="card manual"><h5>${T(UI.manual)}</h5><ol>${l.manualTest.steps.map((s) => `<li>${code(s)}</li>`).join("")}</ol><div class="expect"><b>${T(UI.expect)}</b><br>${code(l.manualTest.expect)}</div></section>` : ""}
-    <p class="muted" style="font-size:13px">${T(UI.lessonMeta)}: ${esc(l.teacher)} · ${esc(l.level)}/${esc(l.lang)} · ${esc(new Date(l.createdAt).toLocaleString())}</p>
-  </article>`;
+  return `${stepWhat()}<h3 class="subhead">${T(UI.impact)}</h3>${lessonImpact()}<div style="margin-top:14px">${stepQuiz()}</div>
+    <p class="muted" style="font-size:13px">${T(UI.lessonMeta)}: ${esc(l.teacher)} · ${esc(l.level)}/${esc(l.lang)} · ${esc(new Date(l.createdAt).toLocaleString())}</p>`;
 }
 
 function all() { labels(); pickers(); rail(); head(); strip(); nav(); content(); }
@@ -509,7 +726,7 @@ function openStream() {
     if (S.data && e.turn === S.turn && !S.data.events.some((x) => x.ts === e.ts && x.kind === e.kind && x.tool === e.tool)) {
       S.data.events.push(e);
       if (S.follow) S.cur = duration();
-      head(); strip(); if (S.tab === "live" || S.tab === "logs") content();
+      head(); strip(); if (guided() ? S.data.turn.status === "open" || S.bView === "live" : S.tab === "live" || S.tab === "logs") content();
     }
   });
   stream.addEventListener("turns", async (m) => {
@@ -527,19 +744,23 @@ function openStream() {
 document.addEventListener("click", async (e) => {
   const b = e.target.closest("button,a"); if (!b) return;
   if (b.dataset.lang) { S.lang = b.dataset.lang; save("vx-lang", S.lang); all(); }
-  else if (b.dataset.level) { S.level = b.dataset.level; save("vx-level", S.level); labels(); }
+  else if (b.dataset.level) { S.level = b.dataset.level; save("vx-level", S.level); S.bView = null; all(); }
+  else if (b.dataset.step || b.dataset.go) { S.step = +(b.dataset.step ?? b.dataset.go); S.bView = null; nav(); content(); $("#nav").scrollIntoView({ block: "start", behavior: "smooth" }); }
+  else if (b.id === "finishBtn") { S.done[doneKey()] = true; try { localStorage.setItem("vx-done", JSON.stringify(S.done)); } catch { /* private mode */ } nav(); content(); }
+  else if (b.id === "claimsToggle") { S.claimsOpen = !S.claimsOpen; head(); }
+  else if (b.id === "backLesson") { S.bView = null; nav(); content(); }
   else if (b.id === "themeBtn") { const r = document.documentElement; r.dataset.theme = r.dataset.theme === "dark" ? "light" : "dark"; save("vx-theme", r.dataset.theme); }
-  else if (b.dataset.turn) { S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; S.wireSel = null; await loadTurn(); }
+  else if (b.dataset.turn) { S.turn = +b.dataset.turn; S.follow = S.turn === S.turns.at(-1)?.n; S.file = 0; S.wireSel = null; S.step = 0; S.bView = null; S.claimsOpen = false; await loadTurn(); }
   else if (b.dataset.tab) { S.tab = b.dataset.tab; nav(); content(); }
   else if (b.dataset.file) { S.file = +b.dataset.file; content(); }
   else if (b.id === "tlToggle") { S.stripOpen = !S.stripOpen; strip(); }
   else if (b.id === "followBtn") { S.follow = true; S.cur = duration(); strip(); content(); }
-  else if (b.dataset.jump) { S.cur = +b.dataset.jump; S.follow = false; S.stripOpen = true; S.tab = "live"; all(); }
+  else if (b.dataset.jump) { S.cur = +b.dataset.jump; S.follow = false; S.stripOpen = true; if (guided()) S.bView = "live"; else S.tab = "live"; all(); }
   else if (b.dataset.q) { (S.quiz[`${S.session}/${S.turn}`] ??= {})[+b.dataset.q] = +b.dataset.o; content(); }
   else if (b.dataset.copy) {
-    const k = b.dataset.copy, text = k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k]?.prompt;
+    const k = b.dataset.copy, text = k === "claimfix" ? claimFixPrompt(S.data.lesson.claims.find((c) => c.status === "none")) : k.startsWith("an") ? impactItems()[+k.slice(2)]?.prompt : S.data.lesson.impact[+k.slice(2)]?.prompt;
     try { await navigator.clipboard.writeText(text ?? ""); } catch { /* clipboard blocked */ }
-    S.copied = k; content(); setTimeout(() => { S.copied = null; content(); }, 1600);
+    S.copied = k; head(); content(); setTimeout(() => { S.copied = null; head(); content(); }, 1600);
   }
   else if (b.id === "teachBtn") {
     b.disabled = true;
@@ -565,7 +786,8 @@ document.addEventListener("change", async (e) => {
     const r = tr.getBoundingClientRect(), dur = duration();
     S.cur = Math.max(0, Math.min(dur, ((ev.clientX - r.left) / r.width) * dur));
     S.follow = S.data.turn.status === "open" && S.cur >= dur - 0.5;
-    if (S.tab !== "live" && S.tab !== "logs") { S.tab = "live"; nav(); }
+    if (guided()) { if (lessonReady() && S.bView !== "live") { S.bView = "live"; nav(); } }
+    else if (S.tab !== "live" && S.tab !== "logs") { S.tab = "live"; nav(); }
     strip(); content();
   };
   tr.addEventListener("pointerdown", (ev) => { drag = true; tr.classList.add("drag"); tr.setPointerCapture(ev.pointerId); set(ev); });

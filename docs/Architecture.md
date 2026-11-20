@@ -100,6 +100,13 @@ Original design notes:
   - `scripts/assemble-site.mjs` builds `site/` from the console plus that data, and the `pages.yml` workflow deploys it (skipped while the repo is private).
   - `scripts/serve-static.mjs` previews the site locally.
 
+**Guided lesson (Phase 7, built 11-21).** The Beginner/Developer switch changes the console's shape, as in the mockup:
+- **Beginner** gets a stepper instead of tabs: What happened → What changed → Watch out → Quiz, with Back/Next and "Finish lesson" (remembered per prompt in the browser's localStorage). Clicking a timeline link from a lesson opens the live view with "Back to the lesson". Without a lesson it shows the "Write the lesson" box and the diff. While the prompt runs it shows the live feed.
+- **Developer** keeps the tabs. The Learn tab reuses the same step renderers.
+- Both levels show a header summary: **health** (Safe to keep / Check first / Risky), worked out from evidence only (did a test command run and pass, claims with no evidence, impact risk, security findings), never from the AI's words; **what you asked for** (lesson.asks); and the **claims bar**, which turns into a red alert with a copyable fix prompt when a claim has no evidence.
+- **Glossary:** about 45 everyday words in Hinglish and English, plus the lesson's own `concepts` (which win). The first use of each term in a block gets a dotted underline and a tooltip. Code spans are never touched.
+- URL helpers for screenshots: `level=beg|dev`, `step=0..3`, `lang=hi|en`.
+
 **Change found in the real check (11-20):** on Windows, Claude Code ends its child processes when it exits, which cut a detached `finish-turn` short. So the "after" snapshot and the diff now run **synchronously in the Stop hook** (0.39 s measured). Auto lessons are detached only on macOS and Linux. On Windows the open console teaches them.
 
 Original design notes:
