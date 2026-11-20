@@ -81,7 +81,11 @@ Original design notes:
 - Endpoints: `/api/projects`, `/api/sessions`, `/api/session`, `/api/turn` (turn + events + diff + lesson), `POST /api/explain`, and `/api/stream` (SSE: `ev` per new event, `turns` when any turn changes; it polls every 500 ms).
 - Guards: binds to `127.0.0.1` only, a 36-hex token on every API call (timing-safe compare), a `Host` header allow-list (DNS rebinding), id format checks, and static files confined to the console folder.
 - `vibe-explainer open [dir] [--port] [--no-browser]` starts it and opens the browser. When `mode=auto`, the open server also teaches finished turns, one at a time.
-- Screenshot helpers: `?tab=…&theme=…&nostream=1`.
+- Screenshot helpers: `?tab=…&theme=…&nostream=1&turn=N&tl=open`.
+- **Static demo mode** (GitHub Pages): when the page sets `window.VX_STATIC` to a JSON file, `api()` reads that file instead of the server, and there is no stream, no "write lesson" and no token. The UI defaults to English and shows a "Demo" tag.
+  - `scripts/build-demo.mjs --home --project` exports real sessions to `demo/demo-data.json`. It scrubs absolute paths to `~/demo-project`, drops transcript paths, and **refuses to build** if the user's name or home folder is still anywhere.
+  - `scripts/assemble-site.mjs` builds `site/` from the console plus that data, and the `pages.yml` workflow deploys it (skipped while the repo is private).
+  - `scripts/serve-static.mjs` previews the site locally.
 
 **Change found in the real check (11-20):** on Windows, Claude Code ends its child processes when it exits, which cut a detached `finish-turn` short. So the "after" snapshot and the diff now run **synchronously in the Stop hook** (0.39 s measured). Auto lessons are detached only on macOS and Linux. On Windows the open console teaches them.
 

@@ -6,14 +6,16 @@ const pad = (n) => String(n).padStart(2, "0");
 const mmss = (s) => `${pad(Math.floor(Math.max(0, s) / 60))}:${pad(Math.round(Math.max(0, s)) % 60)}`;
 
 const params = new URLSearchParams(location.search);
-const TOKEN = params.get("t") || "";
+// Static demo (GitHub Pages): the page sets window.VX_STATIC to a JSON export of real sessions.
+const STATIC = window.VX_STATIC || null;
+const TOKEN = params.get("t") || (STATIC ? "demo" : "");
 const pref = (k, d) => { try { return localStorage.getItem(k) || d; } catch { return d; } };
 const save = (k, v) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } };
 
 const S = {
-  lang: pref("vx-lang", "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
+  lang: pref("vx-lang", STATIC ? "en" : "hi"), level: pref("vx-level", "beg"), tab: ["live", "logs", "changes", "learn"].includes(params.get("tab")) ? params.get("tab") : "live",
   projects: [], project: params.get("project"), sessions: [], session: params.get("session"),
-  turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: false, file: 0, quiz: {}, copied: null,
+  turns: [], turn: null, data: null, cur: 0, follow: true, stripOpen: params.get("tl") === "open", file: 0, quiz: {}, copied: null,
 };
 
 const UI = {
@@ -45,7 +47,19 @@ const UI = {
 const T = (o) => (o && typeof o === "object" ? (o[S.lang] ?? o.hi) : o ?? "");
 
 /* ---------- API ---------- */
+let DB = null;
 async function api(pathname, q = {}, method = "GET") {
+  if (STATIC) {
+    DB ??= await (await fetch(STATIC)).json();
+    const k = (...a) => a.join("/");
+    switch (pathname) {
+      case "/api/projects": return DB.projects;
+      case "/api/sessions": return DB.sessions[q.project] ?? [];
+      case "/api/session": return DB.session[k(q.project, q.session)];
+      case "/api/turn": return structuredClone(DB.turn[k(q.project, q.session, q.turn)]);
+      default: throw new Error("not available in the demo");
+    }
+  }
   const u = new URL(pathname, location.origin);
   u.searchParams.set("t", TOKEN);
   for (const [k, v] of Object.entries(q)) if (v != null) u.searchParams.set(k, v);
@@ -232,6 +246,7 @@ function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
     if (t.status === "open") return `<div class="empty">${T(UI.waitTurn)}</div>`;
+    if (STATIC) return `<div class="empty">${S.lang === "hi" ? "Is demo mein is prompt ka lesson nahi hai." : "This demo has no lesson for this prompt."}</div>`;
     if (t.status === "analysing" || t.teaching) return `<div class="card teachbox"><h5>${T(UI.teaching)}</h5><span class="spin dark"></span><p class="muted">${code(T(UI.teachNote))}</p></div>`;
     return `<div class="card teachbox"><h5>${T(UI.teachTitle)}</h5><p class="muted">${code(T(UI.teachNote))}</p>
       ${t.status === "failed" && t.lessonError ? `<p class="err">${T(UI.teachFail)} ${esc(t.lessonError)}</p>` : ""}
@@ -276,7 +291,8 @@ async function loadSessions() {
 async function loadSession() {
   const r = await api("/api/session", { project: S.project, session: S.session });
   S.turns = r.turns;
-  S.turn = S.turns.at(-1)?.n ?? null; S.follow = true;
+  const asked = Number(params.get("turn"));
+  S.turn = S.turns.find((t) => t.n === asked)?.n ?? S.turns.at(-1)?.n ?? null; S.follow = true;
   await loadTurn();
   openStream();
 }
@@ -288,7 +304,7 @@ async function loadTurn() {
 }
 function openStream() {
   if (stream) stream.close();
-  if (params.get("nostream") === "1") return; // for screenshots and static captures
+  if (params.get("nostream") === "1" || STATIC) return; // screenshots and the static demo
   const u = new URL("/api/stream", location.origin);
   u.searchParams.set("t", TOKEN); u.searchParams.set("project", S.project); u.searchParams.set("session", S.session);
   stream = new EventSource(u);
@@ -361,5 +377,11 @@ document.addEventListener("change", async (e) => {
 setInterval(() => { if (S.data?.turn.status === "open") { if (S.follow) S.cur = duration(); head(); strip(); } }, 1000);
 
 labels();
+if (STATIC) {
+  const tag = document.createElement("a");
+  tag.className = "demotag"; tag.href = "https://github.com/ankitkumar9546/vibe-explainer";
+  tag.textContent = S.lang === "hi" ? "Demo · asli recorded session" : "Demo · a real recorded session";
+  document.querySelector(".mark").after(tag);
+}
 if (!TOKEN) content();
 else loadProjects().then(all).catch((err) => { $("#content").innerHTML = `<div class="empty">${esc(String(err.message))}</div>`; });

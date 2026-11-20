@@ -2,6 +2,19 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (late night): first demo built
+
+- **Demo session (real):** a small `notes` project (`createNote`, `getNote`, `listNotes`, one node test) was made in scratch.
+  - Two real `claude -p --plugin-dir` prompts in one session: (1) title validation, tests added and run; (2) `deleteNote(id)` with tests.
+  - Real English lessons for both. Turn 1 got 10 claims (9 backed, 1 unverified). Turn 2 got 8 claims (7 backed, 1 unverified). The agent ran the tests both times, so "tests pass" is backed.
+- `demo/demo-data.json` (49 KB): scrubbed, with no name, AppData or scratchpad path. The build refuses to run if one remains.
+- Static console mode, `assemble-site`, `serve-static` and the `pages.yml` workflow, which is skipped while the repo is private.
+- `docs/media/demo.gif` (302 KB, 6 frames: Live and timeline, Changes, Learn, claims, dark Changes, dark Learn), plus stills. The README shows the GIF and links the Pages demo.
+- **Checked:**
+  - The site served locally renders in English (the default for the demo) in light and dark.
+  - Mobile at a true 390 px (iframe method) has no overflow.
+- **Waits on Ankit:** making the repo public. That turns on Pages (Settings → Pages → Source: GitHub Actions) and lets strangers use the marketplace install.
+
 ## 2026-11-20 (late): Phase 5, Claude Code plugin
 
 - `.claude-plugin/plugin.json` and `marketplace.json` are at the repo root (source `./`). The plugin's parts live in `plugin/`: `hooks/hooks.json`, `commands/explain.md`, `commands/console.md` and `skills/explain-session/SKILL.md`.

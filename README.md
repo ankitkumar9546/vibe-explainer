@@ -10,6 +10,12 @@ impact, a check of the agent's claims against the evidence, and a quiz, in Hingl
 Everything runs on your machine. Your project's own `.git` is never written to. Nothing is
 uploaded except to the teacher model, and that is your own `claude`.
 
+![vibe-explainer console: a real Claude Code session with its timeline, diff and lesson](docs/media/demo.gif)
+
+**[Try the live demo →](https://ankitkumar9546.github.io/vibe-explainer/)** It's a real recorded
+Claude Code session, with nothing to install. The demo data is in `demo/`, and the scripts that
+built it are in `scripts/`.
+
 > **Status: early development.** It works with Claude Code today. Roadmap: [docs/Roadmap.md](docs/Roadmap.md).
 > The full planned console (guided lessons, playground, to-do) is in the [mockup](docs/mockup/console.html).
 

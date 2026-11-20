@@ -5,3 +5,4 @@ node_modules/
 .impeccable/questions/
 .impeccable/review/
 .claude/settings.local.json
+site/
