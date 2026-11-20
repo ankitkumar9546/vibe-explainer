@@ -15,6 +15,7 @@ const mmss = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s %
 export function stepLines(events, startedAt) {
   const lines = [];
   for (const e of events) {
+    if (e.kind === "file_change") { lines.push(`${mmss(secs(startedAt, e.ts))} file changed ${e.target ?? ""}`); continue; }
     if (e.kind !== "tool_end") continue;
     const t = mmss(secs(startedAt, e.ts));
     const ok = e.ok === false ? " → FAILED" : "";
@@ -65,7 +66,7 @@ export function buildContext(store, { projectId, sessionId, turn }) {
   const words = agentWords(session.transcriptPath, t.startedAt, t.endedAt);
   const finalReply = words.replies.at(-1) ?? "";
   return {
-    turn: t, session,
+    turn: t, session, source: t.source ?? session.source ?? "claude-code", agent: t.agent ?? session.agent ?? null,
     prompt: maskSecrets(t.prompt ?? ""),
     steps: maskSecrets(clip(stepLines(events, t.startedAt), BUDGET.steps)),
     diff: maskSecrets(clip(maskEnvFilesInPatch(diff), BUDGET.diff)),

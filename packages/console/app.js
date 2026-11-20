@@ -74,7 +74,7 @@ async function api(pathname, q = {}, method = "GET", body = null) {
 
 /* ---------- helpers on events ---------- */
 const CH = (tool) => /^(Read|Grep|Glob|WebFetch|WebSearch|LS|NotebookRead)$/.test(tool) ? "read"
-  : /^(Edit|MultiEdit|Write|NotebookEdit)$/.test(tool) ? "edit" : /^(Bash|PowerShell)$/.test(tool) ? "run" : "soch";
+  : /^(Edit|MultiEdit|Write|NotebookEdit|File)$/.test(tool) ? "edit" : /^(Bash|PowerShell)$/.test(tool) ? "run" : "soch";
 const secsOf = (ts) => (Date.parse(ts) - Date.parse(S.data.turn.startedAt)) / 1000;
 function relPath(p) {
   const cwd = (S.sessions.find((s) => s.id === S.session)?.cwd ?? "").replace(/\\/g, "/");
@@ -91,7 +91,8 @@ function steps() {
       const i = open.findIndex((s) => s.tool === e.tool && s.target === e.target);
       const st = i >= 0 ? open.splice(i, 1)[0] : e;
       out.push({ kind: "tool", t: secsOf(st.ts), len: Math.max(0.6, secsOf(e.ts) - secsOf(st.ts)), tool: e.tool, target: e.target, ok: e.ok !== false, ev: e });
-    } else if (e.kind === "stop") out.push({ kind: "stop", t: secsOf(e.ts), len: 0.8 });
+    } else if (e.kind === "file_change") out.push({ kind: "tool", t: secsOf(e.ts), len: 0.6, tool: "File", target: e.target, ok: true, ev: e });
+    else if (e.kind === "stop") out.push({ kind: "stop", t: secsOf(e.ts), len: 0.8 });
   }
   for (const st of open) out.push({ kind: "tool", t: secsOf(st.ts), len: 0.8, tool: st.tool, target: st.target, ok: true, running: true, ev: st });
   return out.sort((a, b) => a.t - b.t);
@@ -164,7 +165,7 @@ function strip() {
 function head() {
   const H = $("#head");
   if (!S.data || S.view === "record") { H.innerHTML = ""; return; }
-  const t = S.data.turn, ev = S.data.events.filter((e) => e.kind === "tool_end").length;
+  const t = S.data.turn, ev = S.data.events.filter((e) => e.kind === "tool_end" || e.kind === "file_change").length;
   H.innerHTML = `<h1 class="prompt">${esc(t.prompt)}</h1>
     <div class="prompt-meta num">${t.status === "open" ? `<span class="livetag">● ${T(UI.now)}</span> · ` : ""}${ev} ${T(UI.steps)} · ${(t.files ?? []).length} ${T(UI.files)} · ${Math.round(duration())}${T(UI.sec)}</div>
     ${summaryCard()}${claimBanner()}`;
@@ -557,7 +558,8 @@ function health() {
   if (runs.length) {
     if (runs.at(-1).ok === false) { why.push({ hi: "Aakhri test run fail hua", en: "The last test run failed" }); k = "check"; }
     else why.push({ hi: "Tests chale aur pass hue", en: "Tests ran and passed" });
-  } else if (files) { why.push({ hi: "Is prompt mein koi test nahi chala", en: "No test ran in this prompt" }); k = "check"; }
+  } else if (t.source === "watch") why.push({ hi: "Tests chale ya nahi, ye watch nahi dekh sakta (sirf files dikhti hain)", en: "Watch can't see whether tests ran (it only sees files)" });
+  else if (files) { why.push({ hi: "Is prompt mein koi test nahi chala", en: "No test ran in this prompt" }); k = "check"; }
   const none = (l?.claims ?? []).filter((c) => c.status === "none").length;
   if (none) { why.push({ hi: `${none} daawa bina saboot`, en: `${none} claim${none > 1 ? "s" : ""} without evidence` }); k = "check"; }
   const imp = l ? l.impact.map((m) => m.risk) : (a?.symbols ?? []).filter((s) => s.change !== "added").map((s) => s.risk);

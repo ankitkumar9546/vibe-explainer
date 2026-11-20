@@ -44,6 +44,9 @@ The contract between the recorder, the store, the teacher and the console.
 | `tool_end` | PostToolUse | `tool`, `target`, `input`, `result`, `ok` |
 | `stop` | Stop | none |
 | `session_end` | SessionEnd | `reason` |
+| `file_change` | `watch` (Phase 10) | `target` (path relative to the project) |
+
+`watch` sessions have `session.source = "watch"`, `session.agent`, ids like `w-20261121104500`, and `turn.source = "watch"` and `turn.agent` on each turn.
 
 Rules:
 - `target` is the most useful single string for the tool: a file path for Read/Edit/Write, the command for Bash, the pattern for Grep/Glob, otherwise `null`.

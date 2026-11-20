@@ -57,6 +57,10 @@ node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson aft
 ```
 
 Use either the plugin or `init` in a project, not both, or every step is recorded twice.
+
+**Other agents (Cursor, Copilot, Aider…):** run `vibe-explainer watch /path/to/project --agent cursor` in a
+terminal while the agent works. Each burst of edits becomes a prompt with a diff and a lesson. Type what you
+asked the agent there to name it.
 `init --remove` takes the project hooks out.
 
 ## How it works

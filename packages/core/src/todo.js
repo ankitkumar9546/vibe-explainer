@@ -31,7 +31,7 @@ export function buildTodo({ turn, events = [], lesson = null, analysis = null })
       t: bi("Fail hue tests theek karo", "Fix the failing tests"),
       d: `\`${last.target}\`${out ? `\n${tail(out)}` : ""}`,
       prompt: bi(`\`${last.target}\` fail hua. Kya fail hua wo padho, code theek karo (tests ko kamzor mat karo), aur tests dobara chalao.`, `\`${last.target}\` failed. Read what failed, fix the code (don't weaken the tests), and run them again.`) });
-  } else if (!runs.length && codeChanged) {
+  } else if (!runs.length && codeChanged && turn.source !== "watch") { // watch can't see commands, so it can't tell
     items.push({ id: "tests-none", kind: "tests", risk: 2,
       t: bi("Tests chalao", "Run the tests"),
       d: bi("Is prompt mein code badla, par koi test command nahi chali.", "Code changed in this prompt, but no test command ran."),

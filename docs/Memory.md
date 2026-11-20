@@ -2,6 +2,16 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-21 (late night): Phase 10, watch
+
+- `core/src/watch.js` `startWatch()` and the CLI `watch [dir] --agent --quiet`. Turns come from bursts of file changes. Before = the previous snapshot. A typed line names the prompt, and an empty line ends the turn now. Temp and ignored paths are skipped, and an unchanged tree is dropped.
+- The teacher prompt, to-do and health know a watch turn can't see commands. The console shows `file_change` as Edit steps.
+- **Checked:**
+  - `npm test`: 53/53. New tests: a turn from changes with the typed prompt; same bytes or ignored paths make no turn; turn 2 diffs from turn 1; a real `fs.watch` run; the teacher and to-do rules.
+  - Real: no Cursor/Codex/Copilot CLI is on this machine, so the outside agent was `claude -p` **without** the plugin or hooks. `watch` recorded its edit as turn 1. The first try showed `calc.py.tmp.12796.…` atomic-save files: now filtered, and each file is shown once per turn. The lesson: "The record does not show whether the tests were run." Console health: "Watch can't see whether tests ran".
+- **Ankit to try:** a real Cursor session with `watch`.
+- **Next:** Phase 11, teacher adapters (Ollama, Gemini, OpenAI).
+
 ## 2026-11-21 (night): Phase 9, playground
 
 - `core/src/sandbox.js` (sandbox from a snapshot, dependency links, runs, apply guard) and `core/src/teacher/playground.js` (what-if + challenge, edit take, line diff). Server: `/api/sandbox`, `/api/file`, `/api/sandbox/{allow,run,playground,apply,discard}`, `/preview/…`.

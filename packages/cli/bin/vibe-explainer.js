@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer, shadowDir, ensureAnalysis, buildExport } from "../../core/src/index.js";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -61,6 +61,8 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
                                      ready-made text from the newest session
   vibe-explainer config [set KEY VALUE]   teacher, mode (manual|auto), level, lang, model, registry (on|off)
   vibe-explainer open [dir] [--port N] [--no-browser] [--detach]   open the console in your browser
+  vibe-explainer watch [dir] [--agent NAME] [--quiet SECONDS]
+                                     record an agent with no hooks (Cursor, Copilot…) by watching files
   vibe-explainer hook                (used by Claude Code; reads a hook payload on stdin)
 `;
 
@@ -163,6 +165,40 @@ switch (cmd) {
     }
     const kind = ["pr", "commit", "note"].includes(flagOf("kind")) ? flagOf("kind") : "pr";
     process.stdout.write(buildExport(kind, { project: path.basename(dir), turns }, flagOf("lang") ?? loadConfig(store.home).lang));
+    break;
+  }
+  case "watch": {
+    const store = new Store();
+    const dir = dirArg();
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) { console.error(`No such folder: ${dir}`); process.exit(1); }
+    const agent = flagOf("agent") ?? "agent";
+    const quietMs = Math.max(2, Number(flagOf("quiet")) || 8) * 1000;
+    const cfg = loadConfig(store.home);
+    let teaching = Promise.resolve();
+    const w = startWatch(store, {
+      dir, agent, quietMs,
+      onChange: (rel) => process.stdout.write(`  changed ${rel}\n`),
+      onTurn: (info) => {
+        const sum = info.files.map((f) => `${f.path} +${f.add ?? "?"} -${f.del ?? "?"}`).join(", ");
+        console.log(`turn ${info.turn}: ${info.files.length} file${info.files.length === 1 ? "" : "s"} (${sum})`);
+        if (loadConfig(store.home).mode === "auto") {
+          teaching = teaching.then(() => teachTurn(store, info, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: cfg.level, lang: cfg.lang, online: cfg.registry === "on" }))
+            .then((r) => console.log(r.ok ? `  lesson ready for turn ${info.turn}` : `  lesson failed: ${r.error}`)).catch(() => {});
+        }
+      },
+    });
+    console.log(`Watching ${dir} for ${agent} (session ${w.sessionId}).
+A prompt ends after ${quietMs / 1000}s with no changes. Type what you asked the agent and press Enter to name the prompt; an empty line ends it now. Ctrl+C stops.`);
+    process.stdin.setEncoding("utf8");
+    let buf = "";
+    process.stdin.on("data", (d) => {
+      buf += d; let i;
+      while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (line) { w.label(line); console.log("  (prompt noted)"); } else w.flush(); }
+    });
+    const end = async () => { w.stop(); await teaching; console.log("Stopped. Open the console with: vibe-explainer open"); process.exit(0); };
+    process.on("SIGINT", end); process.on("SIGTERM", end);
+    process.stdin.on("end", () => { /* no terminal: keep watching until a signal */ });
+    await new Promise(() => {});
     break;
   }
   case "baseline": {

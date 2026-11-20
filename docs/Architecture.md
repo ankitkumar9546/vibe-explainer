@@ -99,6 +99,15 @@ Original design notes:
 - Runs the project's lint and test commands there (taken from `package.json` scripts and confirmed by the user once).
 - "Apply to my project" writes a patch to the real tree only after the user confirms in the UI (R1).
 
+### 3.6b `watch` (`core/src/watch.js`), Phase 10 (built 11-21)
+- For agents with no hooks (Cursor, Windsurf, Copilot, Aider, or a person). `vibe-explainer watch [dir] --agent NAME --quiet SECONDS` uses one recursive `fs.watch` on the folder.
+- **Turn boundaries:** a turn starts at the first relevant change and ends after `quiet` seconds (default 8) with no changes, or when the user presses Enter. Its "before" is the previous snapshot: the baseline taken when watching starts, then each turn's "after". So no edit falls between turns, and nothing has to happen before the first change.
+- **Not a turn:** changes only in `.git`, dependency or build folders, or editor and agent temp files (`.swp`, `x.js.tmp.1234.abcd` atomic saves, JetBrains `___jb_tmp___`, `.crswap`). A save whose bytes didn't change leaves the snapshot tree the same and is dropped too.
+- **Prompt:** whatever the user types in the watch terminal names the turn, else "(no prompt recorded: changes by NAME)". Events are `prompt`, one `file_change` per file (first time it changed), and `stop`, all written when the turn closes. A watch turn is not shown live.
+- **Honesty:** watch sees files, not commands. The teacher is told so: no claims about tests or commands, and `claims: []`. The to-do never says "no test ran", and the console's health says it can't tell.
+- With `mode=auto` the watch process writes each lesson itself.
+- Don't run `watch` on a project the Claude Code plugin is already recording: the same edits would be recorded twice.
+
 ### 3.7 Server + console (`core/src/server.js`, `packages/console/`), Phase 4 (built 11-20)
 - **The console has no build step**: plain `index.html`, `app.css` and `app.js` (ES module), with self-hosted fonts (`fonts/`, SIL OFL, fetched by `scripts/fetch-fonts.mjs`). Vite was the plan, but it isn't needed yet.
 - Endpoints: `/api/projects`, `/api/sessions`, `/api/session`, `/api/turn` (turn + events + diff + lesson), `POST /api/explain`, and `/api/stream` (SSE: `ev` per new event, `turns` when any turn changes; it polls every 500 ms).

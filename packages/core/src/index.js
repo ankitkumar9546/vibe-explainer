@@ -10,6 +10,7 @@ export { teachTurn } from "./teacher/teach.js";
 export { claudeTeacher } from "./teacher/claude.js";
 export { startServer } from "./server.js";
 export { buildTodo, testRuns } from "./todo.js";
+export { startWatch, watchedPath } from "./watch.js";
 export { buildExport, exportableTurns } from "./export.js";
 export { learningRecord, saveQuiz, readQuiz, quizStatus } from "./learning.js";
 export { sessionRecord, chatPrompt, askSession, checkExplanation } from "./teacher/chat.js";
