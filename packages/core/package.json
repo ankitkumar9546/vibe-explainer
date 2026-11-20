@@ -1,0 +1,10 @@
+{
+  "name": "@vibe-explainer/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Records what an AI coding agent did and turns it into lessons.",
+  "main": "src/index.js",
+  "exports": { ".": "./src/index.js" },
+  "engines": { "node": ">=20" }
+}

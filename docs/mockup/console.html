@@ -1,0 +1,1776 @@
+﻿<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vibe-explainer console (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script>(function(){var t=null;try{t=localStorage.getItem("vx-theme")}catch(e){}if(!t)t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";var h=location.hash;if(h.indexOf("dark")>=0)t="dark";if(h.indexOf("light")>=0)t="light";document.documentElement.dataset.theme=t;})();</script>
+<style>
+:root{
+  --ground:#FFDCC8; --ground-2:#FFC9AE; --card:#FFFFFF;
+  --ink:#2A1B3D; --ink-2:#5E5170; --ink-3:#7A6E8C; --line:#F3E1D3; --line-2:#E9D3C2;
+  --action:#6B3BFF; --action-hover:#5A2BF0; --action-wash:#EEE7FF; --on-action:#FFFFFF;
+  --soch:#D4E8FF; --soch-ink:#1D4C85;
+  --read:#CDF1DA; --read-ink:#17643B;
+  --edit:#FFE17E; --edit-ink:#6E5200;
+  --run:#FFCDB8; --run-ink:#86320F;
+  --ok:#CDF1DA; --ok-ink:#17643B;
+  --unk:#FFF0B8; --unk-ink:#6E5200;
+  --bad:#FFD9DC; --bad-ink:#B4182B; --bad-solid:#E5394D;
+  --live:#FF5A5F;
+  --add:#DDF6E6; --add-ink:#17643B; --del:#FFE5E7;
+  --track:#FFFBF7; --chip:#FFF1E8; --fp:#FBF9FF; --field:#FFFFFF; --addhover:#CBEFD9; --livering:#FFE0E1;
+  --r:22px; --r-s:14px;
+  --head:"Baloo 2",system-ui,sans-serif;
+  --sans:"Nunito",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+  --spring:cubic-bezier(.34,1.4,.64,1);
+  --ease:cubic-bezier(.16,1,.3,1);
+  --shadow:0 2px 0 rgba(42,27,61,.04),0 10px 24px -14px rgba(42,27,61,.22);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--ground);color:var(--ink);font:16px/1.6 var(--sans);-webkit-font-smoothing:antialiased}
+::selection{background:var(--action-wash);color:var(--ink)}
+:focus-visible{outline:3px solid var(--action);outline-offset:3px;border-radius:10px}
+*{scrollbar-width:thin;scrollbar-color:var(--line-2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:6px;border:2px solid var(--ground)}
+button{font:inherit;color:inherit}
+code,.mono{font-family:var(--mono);font-size:.84em}
+.num{font-variant-numeric:tabular-nums}
+svg.i{width:18px;height:18px;flex:none;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.press{transition:transform .35s var(--spring)}
+button:active:not(:disabled){transform:scale(.97)}
+button{transition:transform .35s var(--spring),background-color .2s,border-color .2s,color .2s}
+
+/* ---------- header ---------- */
+.top{display:flex;align-items:center;gap:14px;padding:14px 28px;flex-wrap:wrap}
+.mark{display:flex;align-items:center;gap:10px;font:800 22px/1 var(--head);letter-spacing:-.01em}
+.mark .box{width:34px;height:34px;border-radius:11px;background:var(--ink);display:grid;place-items:center;transform:rotate(-6deg)}
+.mark .box i{width:12px;height:12px;border-radius:4px;background:var(--edit)}.turn .n,.feed .tx code,.impact .where,.strip h2 .num{background:var(--chip)}
+.proj{color:var(--ink-2);font-size:15px;font-weight:600}
+.proj b{color:var(--ink)}
+.demo{font-size:12px;font-weight:700;color:var(--ink-2);background:var(--card);padding:4px 10px;border-radius:999px;border:1.5px dashed var(--line-2)}
+.spacer{flex:1}
+.rec{display:flex;align-items:center;gap:8px;font:700 14px var(--sans);padding:7px 14px;border-radius:999px;background:var(--card);box-shadow:var(--shadow)}
+.rec i{width:10px;height:10px;border-radius:50%;background:var(--live);box-shadow:0 0 0 4px var(--livering)}
+.rec.off{opacity:.7}.rec.off i{background:var(--ink-3);box-shadow:none}
+.seg{display:inline-flex;background:var(--card);border-radius:999px;padding:4px;box-shadow:var(--shadow)}
+.seg button{border:0;background:none;padding:6px 14px;border-radius:999px;font-size:14px;font-weight:700;cursor:pointer;color:var(--ink-2)}
+.seg button[aria-pressed="true"]{background:var(--action);color:var(--on-action)}
+.seg button:hover:not([aria-pressed="true"]){color:var(--ink);background:var(--action-wash)}
+
+/* ---------- timeline card ---------- */
+.strip{margin:0 28px 20px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:18px 22px 16px;display:grid;grid-template-columns:130px minmax(0,1fr);gap:0 16px}
+.strip h2{grid-column:1/-1;margin:0 0 12px;font:700 15px var(--sans);color:var(--ink-2);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.strip h2 b{font:700 18px/1.25 var(--head);color:var(--ink);overflow-wrap:anywhere}
+.strip h2 .num{background:var(--ground);padding:2px 10px;border-radius:999px;font-size:13px}
+.strip .follow{margin-left:auto;border:0;background:var(--action);color:var(--on-action);border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;display:none}
+.strip .follow.show{display:inline-block}
+.chans{display:grid;grid-template-rows:repeat(4,32px);font-size:14px;font-weight:700}
+.chans div{display:flex;align-items:center;gap:8px;padding:0 10px;margin:3px 0;border-radius:10px}
+.chans div:nth-child(1){background:var(--soch);color:var(--soch-ink)}
+.chans div:nth-child(2){background:var(--read);color:var(--read-ink)}
+.chans div:nth-child(3){background:var(--edit);color:var(--edit-ink)}
+.chans div:nth-child(4){background:var(--run);color:var(--run-ink)}
+.trace{position:relative;height:128px;touch-action:none;cursor:ew-resize;border-radius:14px;background:
+  repeating-linear-gradient(to right,transparent 0,transparent calc(var(--major) - 2px),var(--line) calc(var(--major) - 2px),var(--line) var(--major));
+  background-color:var(--track);--minor:0px}
+.tick{position:absolute;height:22px;margin-top:5px;border-radius:999px;min-width:10px}
+.tick.soch{background:var(--soch);box-shadow:inset 0 0 0 2px #A9CDF5}
+.tick.read{background:var(--read);box-shadow:inset 0 0 0 2px #99DDB3}
+.tick.edit{background:var(--edit);box-shadow:inset 0 0 0 2px #F2C53A}
+.tick.run{background:var(--run);box-shadow:inset 0 0 0 2px #F5A27F}
+.tick.bad{background:var(--bad-solid);box-shadow:none}
+.tick.future{opacity:.3}
+.cursor{position:absolute;top:-8px;bottom:-8px;width:0;border-left:3px solid var(--action);pointer-events:none;transition:left .5s var(--spring);margin-left:-1.5px}
+.cursor::before{content:"";position:absolute;top:-6px;left:-9px;width:15px;height:15px;border-radius:50%;background:var(--action);box-shadow:0 0 0 4px var(--action-wash)}
+.cursor.live{border-color:var(--live)}.cursor.live::before{background:var(--live);box-shadow:0 0 0 4px var(--livering)}
+.trace.drag .cursor{transition:none}
+@media (prefers-reduced-motion:reduce){.cursor,button{transition:none}}
+.scale{grid-column:2;position:relative;height:22px;font:600 12px var(--mono);color:var(--ink-3);margin-top:10px}
+.scale span{position:absolute;top:0;transform:translateX(-50%)}.scale span:first-child{transform:none}
+.pin{position:absolute;bottom:-9px;width:16px;height:16px;transform:translateX(-50%);border-radius:50%;border:2.5px solid var(--card);pointer-events:none}
+.pin.ok{background:#2FBF6B}.pin.unk{background:#F2C53A}.pin.bad{background:var(--bad-solid)}
+.chanic{position:absolute;left:-30px;display:none;pointer-events:none;line-height:0;padding:3px;border-radius:8px}
+.chanic:nth-of-type(1){}
+
+/* ---------- body ---------- */
+.body{display:grid;grid-template-columns:290px minmax(0,1fr);gap:20px;padding:0 28px 60px}
+.rail{display:flex;flex-direction:column;gap:10px}
+.rail h3{margin:4px 6px 2px;font:700 14px var(--sans);color:var(--ink-2)}
+#turns{display:flex;flex-direction:column;gap:10px}
+.turn{display:grid;grid-template-columns:36px 1fr;gap:4px 10px;width:100%;text-align:left;border:0;background:var(--card);padding:14px 16px;cursor:pointer;border-radius:18px;box-shadow:var(--shadow);border:2px solid transparent}
+.turn:hover{border-color:var(--line-2)}
+.turn[aria-current="true"]{border-color:var(--action);box-shadow:0 0 0 4px var(--action-wash),var(--shadow)}
+.turn .n{width:32px;height:32px;border-radius:10px;background:var(--ground);display:grid;place-items:center;font:800 15px var(--head);color:var(--ink-2)}
+.turn[aria-current="true"] .n{background:var(--action);color:var(--on-action)}
+.turn .p{font-size:15px;line-height:1.35;font-weight:700;padding-top:4px}
+.turn .meta{grid-column:2;font-size:13px;color:var(--ink-3);display:flex;gap:4px 8px;align-items:center;flex-wrap:wrap;font-weight:600}
+.turn .meta .dot{width:8px;height:8px;border-radius:50%;background:var(--live)}
+.turn .meta .donetag{display:inline-flex;align-items:center;gap:3px;color:var(--ok-ink);background:var(--ok);padding:0 8px;border-radius:999px;font-weight:800}.turn .meta .donetag .i{width:12px;height:12px;stroke-width:3}
+.turn .meta .flag{color:var(--bad-ink);background:var(--bad);padding:0 8px;border-radius:999px;font-weight:800;white-space:nowrap}
+.overviewbtn{font-size:15px;font-weight:700;border:2px dashed var(--line-2);background:transparent;border-radius:18px;padding:12px 16px;text-align:left;cursor:pointer;color:var(--ink-2)}
+.overviewbtn:hover{background:var(--card)}
+.overviewbtn[aria-current="true"]{background:var(--action);color:var(--on-action);border-color:var(--action)}
+
+.report{min-width:0}
+.prompt{font:800 34px/1.12 var(--head);letter-spacing:-.02em;margin:6px 0 8px;max-width:30ch;overflow-wrap:anywhere}
+.prompt-meta{color:var(--ink-2);font-size:15px;font-weight:600;margin-bottom:22px}
+
+/* findings = claim cards */
+.findings{margin-bottom:26px}
+.findings h4{margin:0 0 12px;font:800 22px var(--head)}
+.findings{display:block}
+.claimrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.claim{background:var(--card);border-radius:var(--r);padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;border:2px solid transparent}
+.claim.bad{border-color:var(--bad-solid);background:linear-gradient(var(--card),var(--card)) padding-box}
+.stampx{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;font:800 13px var(--sans);padding:5px 12px 5px 8px;border-radius:999px;white-space:nowrap}
+.stampx .i{width:16px;height:16px;stroke-width:2.6}
+.stampx.ok{background:var(--ok);color:var(--ok-ink)}
+.stampx.unk{background:var(--unk);color:var(--unk-ink)}
+.stampx.bad{background:var(--bad-solid);color:#fff}
+.claim .k{font:800 13px var(--head);color:var(--ink-3);margin-right:6px}
+.claim q{font:700 18px/1.35 var(--head);quotes:"“" "”"}
+.claim .ev{font-size:14px;color:var(--ink-2);line-height:1.5}
+.claim .ev a{color:var(--action);font-weight:800;text-decoration:none;cursor:pointer;display:inline-block;margin-top:4px}
+.claim .ev a:hover{text-decoration:underline;text-underline-offset:3px}
+.findings .pending{background:var(--card);border-radius:var(--r);padding:20px;color:var(--ink-2);box-shadow:var(--shadow);font-weight:600}
+
+/* tabs */
+.tabs{display:flex;gap:6px;background:var(--card);padding:6px;border-radius:999px;box-shadow:var(--shadow);margin-bottom:22px;overflow-x:auto;width:max-content;max-width:100%}
+.tabs button{border:0;background:none;padding:9px 16px;font-size:15px;font-weight:800;cursor:pointer;color:var(--ink-2);border-radius:999px;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.tabs button[aria-selected="true"]{background:var(--action);color:var(--on-action)}
+.tabs button:hover:not([aria-selected="true"]){background:var(--action-wash);color:var(--ink)}
+.panel{animation:in .45s var(--ease)}
+@keyframes in{from{opacity:.5;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.panel{animation:none}}
+.lede{font-size:18px;max-width:62ch;margin:0 0 18px}
+.muted{color:var(--ink-2)}
+.empty{background:var(--card);border-radius:var(--r);padding:26px;color:var(--ink-2);max-width:62ch;box-shadow:var(--shadow);font-weight:600;font-size:17px}
+
+/* live */
+.now{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;align-items:start;padding:22px 24px;border-radius:var(--r);margin-bottom:16px;background:var(--soch)}
+.now.ch-read{background:var(--read)}.now.ch-edit{background:var(--edit)}.now.ch-run{background:var(--run)}.now.ch-msg,.now.ch-prompt{background:var(--card);box-shadow:var(--shadow)}
+.now.bad{background:var(--bad)}
+.now .t{font:700 14px var(--mono);color:var(--ink);background:rgba(255,255,255,.65);padding:4px 10px;border-radius:999px;margin-top:4px}
+.now .what{font:700 26px/1.3 var(--head);max-width:38ch}
+.now .what code{font-size:.62em;background:rgba(255,255,255,.7);padding:2px 8px;border-radius:8px;vertical-align:middle}
+.now .why{grid-column:2;color:var(--ink);opacity:.85;max-width:62ch;font-weight:600}
+.feed{list-style:none;margin:0;padding:8px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}
+.feed li{display:grid;grid-template-columns:58px 34px 1fr;gap:10px;padding:10px 12px;border-radius:14px;align-items:center}
+.feed li+li{margin-top:2px}
+.feed li.future{opacity:.35}
+.feed li.at{background:var(--action-wash)}
+.feed .t{font:600 13px var(--mono);color:var(--ink-3)}
+.feed .ic{width:30px;height:30px;border-radius:10px;display:grid;place-items:center;background:var(--soch);color:var(--soch-ink)}
+.feed li.ev-read .ic{background:var(--read);color:var(--read-ink)}
+.feed li.ev-edit .ic{background:var(--edit);color:var(--edit-ink)}
+.feed li.ev-run .ic{background:var(--run);color:var(--run-ink)}
+.feed li.ev-msg .ic,.feed li.ev-prompt .ic{background:var(--ground);color:var(--ink)}
+.feed .ic .i{width:16px;height:16px}
+.feed .tx{overflow-wrap:anywhere;font-weight:600}
+.feed .tx code{background:var(--ground);padding:2px 7px;border-radius:7px}
+.feed .sub{font-size:13px;color:var(--ink-3);font-weight:700}
+.feed li.ev-soch .tx{font-style:italic;color:var(--ink-2);font-weight:400}
+.feed li.ev-msg .tx{font-weight:800}
+
+/* logs */
+.logwrap{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:10px 18px;overflow-x:auto}
+table.log{width:100%;border-collapse:collapse;font-size:14px}
+.log th{text-align:left;font-weight:800;color:var(--ink-3);font-size:13px;padding:10px 12px 10px 0;border-bottom:2px solid var(--line)}
+.log td{padding:10px 12px 10px 0;border-bottom:1px solid var(--line);vertical-align:top}
+.log tr:last-child td{border-bottom:0}
+.log td.t{font-family:var(--mono);color:var(--ink-3);white-space:nowrap}
+.log td.tool span{display:inline-block;font:800 12px var(--sans);padding:3px 10px;border-radius:999px;background:var(--soch);color:var(--soch-ink)}
+.log td.tool.tool-read span{background:var(--read);color:var(--read-ink)}
+.log td.tool.tool-edit span{background:var(--edit);color:var(--edit-ink)}
+.log td.tool.tool-run span{background:var(--run);color:var(--run-ink)}
+.log td.tool.tool-msg span,.log td.tool.tool-prompt span{background:var(--ground);color:var(--ink)}
+.log tr.future td{opacity:.35}
+.log summary{color:var(--action);font-weight:800;margin-top:4px}
+.log pre{margin:8px 0 0;background:var(--ink);color:#F4EEFF;padding:12px 14px;border-radius:12px;font:12.5px/1.55 var(--mono);overflow:auto}
+.res-ok{color:var(--ok-ink);font-weight:800}.res-x{color:var(--bad-ink);font-weight:800}
+
+/* changes */
+.files{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.files button{border:2px solid var(--line-2);background:var(--card);border-radius:999px;padding:7px 14px;font:600 13px var(--mono);cursor:pointer}
+.files button:hover{border-color:var(--action)}
+.files button[aria-pressed="true"]{border-color:var(--action);background:var(--action);color:var(--on-action)}
+.files .c{font-size:12px;margin-left:6px;opacity:.85}
+.diffwrap{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:14px}
+.diffhead{grid-column:1/-1;display:flex;gap:12px;align-items:center;font-size:15px;flex-wrap:wrap}
+.diffhead code{font-weight:700;font-size:15px}
+.newfile{font:800 12px var(--sans);color:var(--add-ink);background:var(--add);padding:3px 10px;border-radius:999px}
+.hunk{display:contents}
+.code{font:13px/1.75 var(--mono);padding:12px 0;overflow-x:auto;min-width:0;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}
+.code div{padding:0 16px;white-space:pre;display:flex;gap:12px}
+.code .ln{color:var(--ink-3);width:2.5ch;text-align:right;flex:none;user-select:none}
+.code .add{background:var(--add)}
+.code .add .sg{color:var(--add-ink);font-weight:700}
+.code .del{background:var(--del);color:var(--ink-3)}.code .del > span:nth-child(3){text-decoration:line-through;text-decoration-color:var(--bad-ink)}
+.code .sg{width:1ch;flex:none;user-select:none}
+.hataya{font:800 10px var(--sans);letter-spacing:.04em;background:var(--bad-ink);color:#fff;padding:1px 7px;border-radius:999px;text-decoration:none;display:inline-block;margin-left:8px}
+.note{align-self:start;position:relative;padding:16px 18px;border-radius:var(--r);background:var(--edit);color:var(--ink);font-size:16px;font-weight:600}
+.note::before{content:"";position:absolute;left:-8px;top:22px;width:16px;height:16px;background:inherit;transform:rotate(45deg);border-radius:3px}
+.note b{display:block;margin-bottom:4px;font:800 16px var(--head)}
+
+/* wiring */
+.wire{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:12px;overflow-x:auto}
+.wire svg{display:block;min-width:640px;width:100%;height:auto}
+.wire .node rect{fill:var(--track);stroke:var(--line-2);stroke-width:2}
+.wire .node.changed rect{fill:var(--edit);stroke:#F2C53A}
+.wire .node.new rect{fill:var(--add);stroke:#59C98A;stroke-width:2.5}
+.wire .node.risk rect{fill:var(--bad);stroke:var(--bad-solid);stroke-width:2.5;stroke-dasharray:7 4}
+.wire .node text{font:700 14px var(--mono);fill:var(--ink)}
+.wire .node .k{font:700 11px var(--sans);fill:var(--ink-2)}
+.wire .edge{stroke:#C9B8AA;stroke-width:2;fill:none}
+.wire .edge.new{stroke:#2FBF6B;stroke-width:3}
+.wire .node{cursor:pointer}
+.wire .node:hover rect{stroke:var(--action)}
+.wire .node.dim{opacity:.25}.wire .edge.dim{opacity:.12}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:14px;font-weight:700;color:var(--ink-2);margin:14px 0 0}
+.legend span{display:flex;align-items:center;gap:7px}
+.legend i{width:20px;height:13px;border-radius:5px;border:2px solid var(--line-2);background:var(--track);display:inline-block}
+.legend i.n{background:var(--add);border-color:#59C98A}
+.legend i.r{background:var(--bad);border:2px dashed var(--bad-solid)}
+.wire-info{margin-top:14px;max-width:62ch;min-height:3em;background:var(--card);border-radius:var(--r-s);padding:12px 16px;box-shadow:var(--shadow)}
+
+/* impact */
+.impact{list-style:none;padding:0;margin:0;max-width:900px;display:flex;flex-direction:column;gap:14px}
+.impact li{display:grid;grid-template-columns:120px 1fr;gap:18px;padding:20px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow)}
+.rlevel{font:800 14px var(--head);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.rlevel{color:var(--ink)}
+.meter{display:flex;gap:4px}.meter i{width:24px;height:10px;background:var(--ground-2);border-radius:999px}
+.meter.l1 i:nth-child(-n+1){background:#2FBF6B}
+.meter.l2 i:nth-child(-n+2){background:#F2A93A}
+.meter.l3 i:nth-child(-n+3){background:var(--bad-solid)}
+.impact h5{margin:0 0 4px;font:800 20px/1.25 var(--head)}
+.impact .where{font:600 13px var(--mono);color:var(--ink-2);margin-bottom:8px;background:var(--ground);display:inline-block;padding:2px 10px;border-radius:8px}
+.impact .fix{font-size:15px;margin-top:10px;background:var(--action-wash);padding:10px 14px;border-radius:12px}
+.impact .fix b{color:var(--action)}
+
+/* seekho */
+.lesson{max-width:74ch;display:flex;flex-direction:column;gap:14px}
+.lesson > .card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:22px 24px}
+.lesson > .card.hero{background:var(--action);color:var(--on-action)}
+.lesson > .card.hero h5{color:#D9CCFF}
+.lesson h5{font:800 20px var(--head);margin:0 0 8px;color:var(--ink)}
+.lesson p{margin:0 0 8px;font-size:17px}
+.lesson .big{font:700 24px/1.35 var(--head);margin:0}
+.lesson .steps{display:flex;flex-direction:column;gap:10px;margin:0}
+.lesson .steps p{background:var(--ground);border-radius:14px;padding:12px 16px;margin:0;font-weight:600}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ba div{padding:16px 18px;border-radius:16px;background:var(--del);font-weight:600}.ba div+div{background:var(--add)}
+.ba b{display:block;font:800 14px var(--head);color:var(--ink-2);margin-bottom:4px}
+.concepts{display:flex;flex-wrap:wrap;gap:10px}
+.concepts details{background:var(--soch);border-radius:16px;padding:10px 16px;flex:1 1 200px}
+.concepts details[open]{background:var(--card);box-shadow:inset 0 0 0 2px var(--soch)}
+.concepts summary,.log summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px}
+.concepts summary{font-weight:800;color:var(--soch-ink)}
+summary::-webkit-details-marker{display:none}summary .i{transition:transform .25s var(--spring);width:16px;height:16px}details[open]>summary .i{transform:rotate(90deg)}
+.concepts details[open] > :not(summary){margin-top:6px}
+.quiz{border-top:0}
+.q{padding:16px 0;border-top:2px dashed var(--line)}
+.q:first-of-type{border-top:0}
+.q p{font:800 18px/1.35 var(--head);margin:0 0 12px}
+.opts{display:flex;flex-direction:column;gap:8px}
+.opts button{text-align:left;border:2px solid var(--line-2);background:var(--card);border-radius:14px;padding:12px 16px;cursor:pointer;font-size:16px;font-weight:700;border-bottom-width:4px}
+.opts button:hover:not(:disabled){border-color:var(--action);color:var(--action)}
+.opts button.right{border-color:#2FBF6B;background:var(--ok);color:var(--ok-ink)}
+.opts button.wrong{border-color:var(--bad-solid);background:var(--bad);color:var(--bad-ink);text-decoration:line-through}
+.opts button:disabled{cursor:default}
+.qexp{font-size:15px;color:var(--ink-2);margin-top:10px;font-weight:600}
+.score{display:inline-block;font:800 16px var(--head);margin-top:12px;background:var(--edit);padding:6px 16px;border-radius:999px}
+.explain-back textarea{width:100%;min-height:96px;font:16px var(--sans);padding:14px 16px;border:2px solid var(--line-2);border-radius:16px;background:var(--track);resize:vertical;color:var(--ink)}
+.explain-back textarea:focus{border-color:var(--action);outline:none}
+.explain-back button{margin-top:10px;border:0;background:var(--action);color:var(--on-action);padding:12px 20px;border-radius:999px;cursor:pointer;font-weight:800;font-size:16px;box-shadow:0 4px 0 var(--action-hover)}
+.explain-back button:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+
+/* overview */
+.areas{list-style:none;padding:0;margin:0;max-width:860px;display:flex;flex-direction:column;gap:10px}
+.areas li{display:grid;grid-template-columns:200px 1fr 110px;gap:16px;padding:16px 20px;background:var(--card);border-radius:18px;box-shadow:var(--shadow);align-items:center;font-weight:600}
+.areas code{font-weight:700}
+.bar{display:flex;gap:3px;flex-wrap:wrap}.bar i{width:12px;height:16px;background:var(--ground-2);border-radius:4px}.bar i.t{background:var(--edit);box-shadow:inset 0 0 0 2px #F2C53A}
+.facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 22px;max-width:860px}
+.facts div{display:flex;flex-direction:column;padding:16px 18px;border-radius:18px;background:var(--soch)}
+.facts div:nth-child(2){background:var(--edit)}.facts div:nth-child(3){background:var(--bad)}.facts div:nth-child(4){background:var(--read)}
+.facts b{font:800 32px/1.1 var(--head)}
+.facts span{font-size:14px;font-weight:700;color:var(--ink-2)}
+
+/* responsive */
+@media (max-width:900px){
+  .top{padding:12px 16px;gap:10px}
+  .proj{display:none}.top .spacer{display:none}
+  .strip{margin:0 16px 16px;grid-template-columns:minmax(0,1fr);padding:14px 14px 12px 14px}
+  .chans{display:none}
+  .trace{margin-left:34px}.scale{grid-column:1;margin-left:34px}
+  .chanic{display:block}
+  .body{grid-template-columns:minmax(0,1fr);padding:0 16px 110px;gap:14px}
+  .rail{flex-direction:row;overflow-x:auto;padding:4px 2px 8px}
+  .rail h3{display:none}
+  #turns{flex-direction:row}
+  .turn{min-width:250px;align-content:start}
+  .overviewbtn{min-width:130px}
+  .prompt{font-size:27px}
+  .tabs{position:fixed;left:10px;right:10px;bottom:10px;z-index:10;width:auto;justify-content:space-between;border-radius:22px;padding:6px;gap:2px;box-shadow:0 10px 30px -8px rgba(42,27,61,.35)}
+  .tabs button{flex-direction:column;gap:2px;padding:7px 4px;font-size:11px;flex:1;border-radius:16px}
+  .diffwrap{grid-template-columns:minmax(0,1fr)}
+  .note::before{left:26px;top:-7px}
+  .claimrow{grid-template-columns:1fr}
+  .areas li{grid-template-columns:1fr;gap:6px}
+  .impact li{grid-template-columns:1fr;gap:10px}
+  .ba{grid-template-columns:1fr}
+  .facts{grid-template-columns:1fr 1fr}
+  .now .what{font-size:21px}
+}
+
+.chanic.ch-soch{background:var(--soch);color:var(--soch-ink)}.chanic.ch-read{background:var(--read);color:var(--read-ink)}
+.chanic.ch-edit{background:var(--edit);color:var(--edit-ink)}.chanic.ch-run{background:var(--run);color:var(--run-ink)}
+
+/* ===== round 3: guided layout + features ===== */
+.report .strip{margin:0 0 18px}
+.strip.mini{grid-template-columns:minmax(0,1fr);padding:12px 18px 12px}
+.strip.mini .chans{display:none}
+.strip.mini .trace{height:40px;margin-left:0}
+.strip.mini .tick{top:8px!important;height:16px;margin-top:4px}
+.strip.mini .chanic{display:none!important}
+.strip.mini .scale{grid-column:1;margin-left:0;margin-top:8px}
+.strip.mini h2{margin-bottom:8px}
+.strip h2 .tlname{font:800 16px var(--head);color:var(--ink)}
+.strip h2 .grow{flex:1}
+.ghost{border:2px solid var(--line-2);background:var(--card);color:var(--ink);border-radius:999px;padding:9px 16px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.ghost:hover{border-color:var(--action);color:var(--action)}
+.primary{border:0;background:var(--action);color:var(--on-action);border-radius:999px;padding:11px 20px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:8px;box-shadow:0 4px 0 #4B22C9}
+.primary:hover{background:var(--action-hover)}
+.primary:disabled{opacity:.7;cursor:progress}
+.sm{padding:7px 14px;font-size:14px}.primary.sm{box-shadow:0 3px 0 #4B22C9}
+.livetag{color:#C2272D;font-weight:800}
+.hint{display:flex;align-items:center;gap:8px;color:var(--ink-2);font-weight:700;margin:0 0 14px}
+
+/* claims: one line */
+.cbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--card);border-radius:var(--r);padding:12px 14px 12px 18px;box-shadow:var(--shadow);margin-bottom:16px;font-weight:700}
+.cbar>.i{width:22px;height:22px;color:#17643B;stroke-width:2.6}
+.cbar.mix>.i{color:var(--unk-ink)}
+.cbar.pending{color:var(--ink-2)}.cbar.pending>.i{color:var(--live)}
+.cbar>span:first-of-type{flex:1;min-width:180px}
+.cpills{display:inline-flex;gap:6px;flex:none!important;min-width:0!important}
+.cpills .stampx{padding:3px 10px 3px 6px;font-size:13px}
+.alert{background:var(--card);border:2.5px solid var(--bad-solid);border-radius:var(--r);padding:16px 18px;margin-bottom:16px;box-shadow:var(--shadow)}
+.alert-top{display:flex;gap:14px;align-items:flex-start}
+.alert-ic{flex:none;width:36px;height:36px;border-radius:12px;background:var(--bad-solid);color:#fff;display:grid;place-items:center}
+.alert-ic .i{stroke-width:3}
+.alert p{margin:2px 0 0;font-size:17px;font-weight:700;line-height:1.45}
+.alert q{font-family:var(--head);font-weight:800}
+.alert .muted{display:block;font-size:14px;font-weight:600;margin-top:4px}
+.alert-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0 0 50px}
+.alert-actions .cpills{margin-left:auto}
+.spin{width:14px;height:14px;border-radius:50%;border:2.5px solid rgba(255,255,255,.4);border-top-color:#fff;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.testres{margin:14px 0 0 50px;background:var(--bad);border-radius:16px;padding:14px 16px;animation:in .45s var(--ease)}
+.testres b{font:800 14px var(--mono)}
+.testres p{font-size:15px;margin:6px 0 10px}
+.testres pre{margin:0;background:var(--ink);color:#F4EEFF;border-radius:12px;padding:12px 14px;font:12.5px/1.55 var(--mono);overflow:auto}
+.findings{margin:-4px 0 18px}
+
+/* sticky nav: stepper + tabs */
+#nav{position:sticky;top:0;z-index:8;padding:10px 0 12px;background:linear-gradient(var(--ground) 82%,transparent)}
+#nav .tabs{margin-bottom:0}
+.stepper{display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:6px;box-shadow:var(--shadow);position:relative;width:max-content;max-width:100%;overflow-x:auto}
+.stepchip{border:0;background:none;display:flex;align-items:center;gap:8px;padding:6px 14px 6px 6px;border-radius:999px;cursor:pointer;font-weight:800;color:var(--ink-2);white-space:nowrap}
+.stepchip .sn{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--ground);font:800 14px var(--head);color:var(--ink-2)}
+.stepchip .sn .i{width:15px;height:15px;stroke-width:2.6}
+.stepchip.done .sn{background:var(--ok);color:var(--ok-ink)}
+.stepchip.on{background:var(--action);color:var(--on-action)}
+.stepchip.on .sn{background:#fff;color:var(--action)}
+.stepchip:hover:not(.on){background:var(--action-wash);color:var(--ink)}
+.stepper .bar{position:absolute;left:22px;right:22px;bottom:2px;height:3px;border-radius:3px;background:transparent;pointer-events:none}
+.stepper .bar i{display:block;height:100%;background:#2FBF6B;border-radius:3px;transition:width .5s var(--spring)}
+.strip[hidden]{display:none}
+.stepnav{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:22px}
+.subhead{font:800 22px var(--head);margin:26px 0 12px}
+.sechead{font:800 26px var(--head);margin:34px 0 4px}
+
+/* fix prompt */
+.fixprompt{margin-top:12px;border:2px dashed #C9B6FF;border-radius:16px;padding:12px 14px;background:var(--fp)}
+.fp-head{display:flex;align-items:center;gap:6px;font:800 14px var(--head);color:var(--action)}
+.fixprompt p{margin:6px 0 10px;font:600 14.5px/1.5 var(--sans)}
+
+/* ask a line */
+.code .line{cursor:pointer;position:relative}
+.code .line:hover{background:var(--action-wash)}
+.code .line.add:hover{background:var(--addhover)}
+.askbtn{margin-left:auto;opacity:0;width:20px;height:20px;border-radius:50%;background:var(--action);color:#fff;font:800 12px/20px var(--sans);text-align:center;flex:none;text-decoration:none!important}
+.code .line:hover .askbtn,.code .line:focus-within .askbtn{opacity:1}
+.askans{white-space:normal!important;display:block!important;margin:6px 12px 10px;background:var(--action-wash);border-radius:14px;padding:12px 14px;font:600 14.5px/1.5 var(--sans);color:var(--ink);animation:in .35s var(--ease)}
+.askq{display:flex;align-items:center;gap:6px;color:var(--action);font-family:var(--head)}
+.askans p{margin:4px 0 8px}
+.askmore{display:flex;gap:8px}
+.askmore input{flex:1;min-width:0;border:2px solid #D6C9FF;border-radius:999px;padding:7px 14px;font:600 14px var(--sans);background:var(--field);color:var(--ink)}
+.askmore input:focus{outline:none;border-color:var(--action)}
+
+/* progress + export */
+.card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:20px 22px}
+.prog{max-width:860px}
+.clist{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.cchip{display:flex;align-items:center;gap:8px;border-radius:14px;padding:8px 12px;font-weight:800;font-size:14px}
+.cchip code{font-size:13px}
+.cchip small{font:700 11px var(--mono);opacity:.6}
+.cchip.solid{background:var(--ok);color:var(--ok-ink)}
+.cchip.weak{background:var(--unk);color:var(--unk-ink)}
+.cchip.new{background:var(--ground);color:var(--ink-2)}
+.exbtns{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
+.exbox{max-width:860px;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);padding:14px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.exbox pre{margin:0;width:100%;background:var(--track);color:var(--ink);border-radius:12px;padding:14px;font:13px/1.6 var(--mono);white-space:pre-wrap}
+
+@media (max-width:900px){
+  #nav{position:static;padding:0;background:none}
+  .stepper{position:fixed;left:10px;right:10px;bottom:10px;z-index:10;width:auto;justify-content:space-between;border-radius:22px;box-shadow:0 10px 30px -8px rgba(42,27,61,.35)}
+  .stepchip{flex-direction:column;gap:2px;padding:6px 4px;font-size:11px;flex:1;border-radius:16px}
+  .stepper .bar{display:none}
+  .alert-actions,.testres{margin-left:0}
+  .alert-actions .cpills{margin-left:0}
+  .strip.mini .trace{margin-left:0}
+  .stepnav{flex-wrap:wrap}
+  .stepnav .primary{flex:1;justify-content:center}
+}
+
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --ground:#160F26; --ground-2:#2B2145; --card:#221A38;
+  --ink:#F5F0FF; --ink-2:#CFC4E6; --ink-3:#A497BF; --line:#33294F; --line-2:#463A66;
+  --action:#8E6BFF; --action-hover:#7C57FF; --action-wash:#2F2557; --on-action:#FFFFFF;
+  --soch:#1C3556; --soch-ink:#B2D6FF;
+  --read:#163A2A; --read-ink:#A2EBC0;
+  --edit:#463712; --edit-ink:#FFDD6E;
+  --run:#4A2418; --run-ink:#FFBCA1;
+  --ok:#163A2A; --ok-ink:#A2EBC0;
+  --unk:#463712; --unk-ink:#FFDD6E;
+  --bad:#47192A; --bad-ink:#FF9AA8; --bad-solid:#FF4D63;
+  --add:#123324; --add-ink:#8FE3B1; --del:#3E1824;
+  --track:#1B1430; --chip:#2B2145; --fp:#241C3E; --field:#1B1430; --addhover:#18432F; --livering:#4A1D2A;
+  --shadow:0 1px 0 rgba(255,255,255,.04) inset,0 12px 28px -16px rgba(0,0,0,.7);
+}
+:root[data-theme="dark"] .mark .box{background:var(--action)}
+:root[data-theme="dark"] .lesson > .card.hero{background:linear-gradient(var(--action),var(--action))}
+:root[data-theme="dark"] .lesson > .card.hero h5{color:#E4DAFF}
+:root[data-theme="dark"] .now .t,:root[data-theme="dark"] .now .what code{background:rgba(0,0,0,.28);color:var(--ink)}
+:root[data-theme="dark"] .note{color:var(--ink)}
+:root[data-theme="dark"] .tick.soch{box-shadow:inset 0 0 0 2px #3C6BA6}
+:root[data-theme="dark"] .tick.read{box-shadow:inset 0 0 0 2px #2E7D55}
+:root[data-theme="dark"] .tick.edit{box-shadow:inset 0 0 0 2px #B48B1A}
+:root[data-theme="dark"] .tick.run{box-shadow:inset 0 0 0 2px #B05A39}
+:root[data-theme="dark"] .wire .node.changed rect{stroke:#B48B1A}
+:root[data-theme="dark"] .wire .node.new rect{stroke:#3FBF7A}
+:root[data-theme="dark"] .wire .edge{stroke:#5A4C7E}
+:root[data-theme="dark"] .bar i.t{box-shadow:inset 0 0 0 2px #B48B1A}
+:root[data-theme="dark"] .fixprompt{border-color:#5B47A8}
+:root[data-theme="dark"] .askmore input{border-color:#4B3D80}
+:root[data-theme="dark"] .primary{box-shadow:0 4px 0 #5432D6}
+:root[data-theme="dark"] .log pre,:root[data-theme="dark"] .testres pre{background:#0E0919}
+:root[data-theme="dark"] #nav{background:linear-gradient(var(--ground) 82%,transparent)}
+:root[data-theme="dark"] .rec i{box-shadow:0 0 0 4px var(--livering)}
+.themebtn{border:0;background:var(--card);width:40px;height:40px;border-radius:50%;display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow);color:var(--ink)}
+.themebtn:hover{color:var(--action)}
+.themebtn .i{width:20px;height:20px}
+.themebtn .moon{display:block}.themebtn .sun{display:none}
+:root[data-theme="dark"] .themebtn .moon{display:none}:root[data-theme="dark"] .themebtn .sun{display:block}
+
+/* ===== round 4: calmer colours, less busy ===== */
+:root{
+  --ground:#F5F4F8; --ground-2:#EAE8EF; --card:#FFFFFF;
+  --ink:#231A33; --ink-2:#584E69; --ink-3:#7B7389; --line:#E7E4EC; --line-2:#D8D4E0;
+  --action:#5A50C8; --action-hover:#4B42B3; --action-wash:#EEEDF9; --on-action:#FFFFFF;
+  --soch:#E8F0FA; --soch-ink:#2F5A86;
+  --read:#E7F3EC; --read-ink:#2B6646;
+  --edit:#FAF3DC; --edit-ink:#735A14;
+  --run:#FAECE4; --run-ink:#86452A;
+  --ok:#E7F3EC; --ok-ink:#2B6646;
+  --unk:#FAF3DC; --unk-ink:#735A14;
+  --bad:#FBE9EB; --bad-ink:#A3293A; --bad-solid:#D14A59;
+  --live:#E0525A; --add:#ECF6F0; --add-ink:#2B6646; --del:#FBEEF0;
+  --track:#FAFAFC; --chip:#F1EFF5; --fp:#F8F7FD; --field:#FFFFFF; --addhover:#DFF0E6; --livering:#F8DFE1;
+  --shadow:0 1px 2px rgba(35,26,51,.04);
+}
+:root[data-theme="dark"]{
+  --ground:#14131A; --ground-2:#24222D; --card:#1C1A24;
+  --ink:#EDEAF3; --ink-2:#BCB5CA; --ink-3:#8E879D; --line:#2A2733; --line-2:#383444;
+  --action:#8A82E2; --action-hover:#7A71D8; --action-wash:#272442; --on-action:#FFFFFF;
+  --soch:#1E2836; --soch-ink:#A8C3E3;
+  --read:#1D2B25; --read-ink:#A3D3B6;
+  --edit:#2F2A1C; --edit-ink:#E2CC8C;
+  --run:#31241F; --run-ink:#E4B7A2;
+  --ok:#1D2B25; --ok-ink:#A3D3B6;
+  --unk:#2F2A1C; --unk-ink:#E2CC8C;
+  --bad:#35202A; --bad-ink:#EFA4AE; --bad-solid:#DB6270;
+  --live:#E0626A; --add:#1A2A22; --add-ink:#9BD1B1; --del:#33202A;
+  --track:#17161E; --chip:#262330; --fp:#1F1D2A; --field:#17161E; --addhover:#203227; --livering:#3A2228;
+  --shadow:none;
+}
+/* hairlines instead of floating shadows */
+.rec,.seg,.strip,.claim,.findings .pending,.tabs,.empty,.feed,.logwrap,.code,.wire,.wire-info,.impact li,.lesson > .card,.areas li,.card,.cbar,.stepper,.exbox,.themebtn{border:1px solid var(--line);box-shadow:none}
+.turn{box-shadow:none;border:1px solid var(--line)}
+.turn:hover{border-color:var(--line-2)}
+.turn[aria-current="true"]{border:1.5px solid var(--action);box-shadow:none}
+.overviewbtn{border:1px dashed var(--line-2)}
+.alert{border-width:1.5px;box-shadow:none}
+.claim.bad{border:1.5px solid var(--bad-solid)}
+.primary,.primary.sm,:root[data-theme="dark"] .primary{box-shadow:none}
+.explain-back button{box-shadow:none}
+.opts button{border-width:1.5px;border-bottom-width:1.5px}
+.files button,.ghost{border-width:1.5px}
+/* timeline pills softer */
+.tick.soch{box-shadow:inset 0 0 0 1.5px #BFD3EA}
+.tick.read{box-shadow:inset 0 0 0 1.5px #BCDCC8}
+.tick.edit{box-shadow:inset 0 0 0 1.5px #E6D294}
+.tick.run{box-shadow:inset 0 0 0 1.5px #E9C3B1}
+:root[data-theme="dark"] .tick.soch{box-shadow:inset 0 0 0 1.5px #34465E}
+:root[data-theme="dark"] .tick.read{box-shadow:inset 0 0 0 1.5px #335244}
+:root[data-theme="dark"] .tick.edit{box-shadow:inset 0 0 0 1.5px #56492A}
+:root[data-theme="dark"] .tick.run{box-shadow:inset 0 0 0 1.5px #5A3F33}
+.chans div{margin:4px 0}
+/* plain-words note: a quiet side column, not a bubble */
+.note,:root[data-theme="dark"] .note{background:transparent;border-left:1px solid var(--line-2);border-radius:0;padding:6px 0 6px 18px;color:var(--ink)}
+.note::before{display:none}
+.note b{color:var(--action);font-size:14px}
+/* "Kya hua": white card with a small colour mark */
+.lesson > .card.hero,:root[data-theme="dark"] .lesson > .card.hero{background:var(--card);color:var(--ink)}
+.lesson > .card.hero h5,:root[data-theme="dark"] .lesson > .card.hero h5{color:var(--action);display:flex;align-items:center;gap:8px;font-size:16px}
+.lesson > .card.hero h5::before{content:"";width:10px;height:10px;border-radius:3px;background:var(--action)}
+.lesson .big{font-size:23px}
+/* calmer fills */
+.facts div,.facts div:nth-child(2),.facts div:nth-child(3),.facts div:nth-child(4){background:var(--card);border:1px solid var(--line)}
+.facts div:nth-child(3) b{color:var(--bad-ink)}
+.concepts details{background:var(--card);border:1px solid var(--line)}
+.concepts details[open]{box-shadow:none;border-color:var(--line-2)}
+.concepts summary{color:var(--ink)}
+.now{border:1px solid var(--line)}
+.now.ch-msg,.now.ch-prompt{box-shadow:none}
+.chans div:nth-child(1),.chans div:nth-child(2),.chans div:nth-child(3),.chans div:nth-child(4){font-weight:700}
+.meter.l1 i:nth-child(-n+1){background:#5BAA7E}
+.meter.l2 i:nth-child(-n+2){background:#D9A441}
+.pin.ok{background:#5BAA7E}.pin.unk{background:#D9B441}
+.wire .node.changed rect{stroke:#E0C970}
+.wire .node.new rect{stroke:#8CC9A5;stroke-width:2}
+.wire .node.risk rect{stroke-width:2}
+.wire .edge.new{stroke:#5BAA7E;stroke-width:2.5}
+:root[data-theme="dark"] .wire .node.changed rect{stroke:#6E5E32}
+:root[data-theme="dark"] .wire .node.new rect{stroke:#3D6B52}
+:root[data-theme="dark"] .mark .box{background:var(--action)}
+.mark .box{background:var(--ink)}
+.mark .box i{background:#F2D46B}
+.stepper .bar i{background:#5BAA7E}
+.bar i.t{background:var(--edit);box-shadow:inset 0 0 0 1.5px #E0C970}
+.fixprompt{border:1px dashed var(--line-2)}
+.testres{border:1px solid var(--line)}
+.strip{padding:16px 20px}
+
+/* ===== round 5 ===== */
+.summary{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr);gap:14px;margin-bottom:16px}
+.health,.asks{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px}
+.hv{display:inline-flex;align-items:center;gap:8px;font:800 18px var(--head);padding:6px 14px 6px 10px;border-radius:999px}
+.hv .i{width:18px;height:18px;stroke-width:2.6}
+.h-ok .hv{background:var(--ok);color:var(--ok-ink)}
+.h-check .hv{background:var(--unk);color:var(--unk-ink)}
+.h-risk .hv{background:var(--bad);color:var(--bad-ink)}
+.h-wip .hv{background:var(--chip);color:var(--ink-2)}
+.health ul{margin:10px 0 0;padding-left:20px;color:var(--ink-2);font-weight:600;font-size:14.5px}
+.health li+li{margin-top:2px}
+.asks h4{margin:0 0 8px;font:800 16px var(--head)}
+.asks ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.asks li{display:flex;gap:10px;align-items:flex-start}
+.asks .aic{flex:none;width:24px;height:24px;border-radius:8px;display:grid;place-items:center;margin-top:1px}
+.asks .aic .i{width:15px;height:15px;stroke-width:2.6}
+.a-done .aic{background:var(--ok);color:var(--ok-ink)}
+.a-part .aic{background:var(--unk);color:var(--unk-ink)}
+.a-no .aic{background:var(--bad);color:var(--bad-ink)}
+.a-wip .aic{background:var(--chip);color:var(--ink-2)}
+.asks b{display:block;font-size:15px}
+.asks small{display:block;color:var(--ink-2);font-size:13.5px;font-weight:600;line-height:1.45}
+
+.term{text-decoration:underline dotted var(--action);text-decoration-thickness:1.5px;text-underline-offset:3px;cursor:help;position:relative;outline:none}
+.term:hover::after,.term:focus::after{content:attr(data-def);position:absolute;left:0;bottom:calc(100% + 8px);width:max-content;max-width:260px;background:var(--ink);color:var(--card);font:600 13px/1.45 var(--sans);padding:8px 11px;border-radius:10px;z-index:30;white-space:normal;letter-spacing:0;text-transform:none}
+.term:focus-visible{outline:2px solid var(--action);outline-offset:2px;border-radius:3px}
+
+.decision .dq{font-weight:700;margin-bottom:12px}
+.dopts{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dopt{border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.dopt.pick{border:1.5px solid var(--ok-ink);background:var(--ok)}
+.dopt b{display:block;font:800 16px var(--head);margin:6px 0 2px}
+.dopt p{margin:0;font-size:14.5px;color:var(--ink-2)}
+.dopt.pick p{color:var(--ink)}
+.dtag{display:inline-flex;align-items:center;gap:4px;font:800 12px var(--sans);color:var(--ink-3)}
+.dopt.pick .dtag{color:var(--ok-ink)}
+.dtag .i{width:13px;height:13px;stroke-width:3}
+.dquote{margin:12px 0 0!important;font-size:14px!important;color:var(--ink-2);font-style:italic}
+
+.errline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.errline a,.errcard a{color:var(--action);font-weight:800;cursor:pointer;text-decoration:none;margin-left:auto}
+.errraw{margin:0 0 12px;background:var(--ground-2);border-radius:12px;padding:10px 12px;font:12.5px/1.55 var(--mono);overflow:auto;color:var(--ink)}
+.errbox{background:var(--chip);border-radius:14px;padding:12px 14px;margin-top:8px;white-space:normal}
+.errbox b{display:block;font:800 13px var(--head);color:var(--action)}
+.errbox p{margin:2px 0 8px;font-size:14.5px;font-weight:600}
+.errbox p:last-child{margin-bottom:0}
+
+.seccard h5{display:flex;align-items:center;gap:8px}
+.pkg{border:1px solid var(--line);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+.pkgtop{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pkgtop code{font-weight:700;font-size:14px}
+.pkgtop .stampx{margin-left:auto}
+.pkg dl{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px;margin:10px 0 0}
+.pkg dt{font:700 12px var(--sans);color:var(--ink-3)}
+.pkg dd{margin:0;font-weight:700;font-size:14px}
+.nopkg{display:flex;align-items:center;gap:8px;font-weight:700;margin:0 0 10px}
+.checks{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px}
+.checks li{display:flex;gap:10px;align-items:flex-start}
+.cic{flex:none;width:24px;height:24px;border-radius:8px;display:grid;place-items:center}
+.cic .i{width:15px;height:15px;stroke-width:2.6}
+.c-ok .cic{background:var(--ok);color:var(--ok-ink)}
+.c-warn .cic{background:var(--unk);color:var(--unk-ink)}
+.checks b{font-size:15px}
+.checks p{margin:2px 0 4px;font-size:14px;color:var(--ink-2)}
+.checks .where{font-size:12.5px;background:var(--chip);padding:2px 8px;border-radius:6px}
+
+.todo .todohead{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.tcount{font:800 14px var(--head);color:var(--ink-2)}
+.tbar{display:block;height:6px;border-radius:6px;background:var(--chip);margin:4px 0 12px;overflow:hidden}
+.tbar i{display:block;height:100%;background:#5BAA7E;border-radius:6px;transition:width .5s var(--spring)}
+.tlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.tlist li{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--line)}
+.tlist li:first-child{border-top:0}
+.tlist li.none{color:var(--ink-2);font-weight:600}
+.tcheck{flex:none;width:24px;height:24px;border-radius:8px;border:1.5px solid var(--line-2);background:var(--card);display:grid;place-items:center;cursor:pointer;margin-top:1px;padding:0;color:#fff}
+.tcheck:hover{border-color:var(--action)}
+.tcheck[aria-pressed="true"]{background:#5BAA7E;border-color:#5BAA7E}
+.tcheck .i{width:15px;height:15px;stroke-width:3}
+.tlist b{font-size:15.5px}
+.tlist p{margin:2px 0 8px;font-size:14px;color:var(--ink-2)}
+.tlist li.on b{text-decoration:line-through;color:var(--ink-3)}
+.tlist li.on p{display:none}
+.manual ol{margin:0 0 12px;padding-left:22px;display:flex;flex-direction:column;gap:6px;font-weight:600}
+.manual code{background:var(--chip);padding:1px 6px;border-radius:6px}
+.expect{background:var(--ok);border-radius:14px;padding:12px 14px}
+.expect b{font:800 14px var(--head);color:var(--ok-ink)}
+.expect p{margin:2px 0 0;font-weight:600;font-size:14.5px}
+.lesson + .card,.todo + .manual,.panel > .card + .card{margin-top:14px}
+.seccard{margin-top:14px}
+
+/* chat */
+.chatfab{position:fixed;right:22px;bottom:22px;z-index:20;display:inline-flex;align-items:center;gap:8px;border:0;background:var(--ink);color:var(--card);padding:12px 18px;border-radius:999px;font-weight:800;cursor:pointer;box-shadow:0 10px 30px -10px rgba(20,15,30,.45)}
+.chatfab .i{width:18px;height:18px}
+.chatpanel{position:fixed;right:22px;bottom:22px;z-index:21;width:min(380px,calc(100vw - 24px));max-height:min(560px,calc(100vh - 40px));display:flex;flex-direction:column;background:var(--card);border:1px solid var(--line-2);border-radius:var(--r);box-shadow:0 20px 50px -20px rgba(20,15,30,.5);overflow:hidden;animation:in .3s var(--ease)}
+.chatpanel[hidden],.chatfab[hidden]{display:none}
+.chathead{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-family:var(--head);font-size:16px}
+.iconbtn{border:0;background:none;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--ink-2)}
+.iconbtn:hover{background:var(--chip);color:var(--ink)}
+.chatlog{flex:1;overflow:auto;padding:14px 16px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.chatlog .muted{margin:0;font-size:14px;font-weight:600}
+.msg{max-width:88%;padding:9px 13px;border-radius:16px;font-size:14.5px;font-weight:600;line-height:1.45}
+.msg.me{align-self:flex-end;background:var(--action);color:var(--on-action);border-bottom-right-radius:6px}
+.msg.ai{align-self:flex-start;background:var(--chip);color:var(--ink);border-bottom-left-radius:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 16px 10px}
+.chip{border:1px solid var(--line-2);background:var(--card);color:var(--ink);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:700;cursor:pointer}
+.chip:hover{border-color:var(--action);color:var(--action)}
+.chatform{display:flex;gap:8px;padding:12px 16px 16px;border-top:1px solid var(--line)}
+.chatform input{flex:1;min-width:0;border:1.5px solid var(--line-2);border-radius:999px;padding:8px 14px;font:600 14px var(--sans);background:var(--field);color:var(--ink)}
+.chatform input:focus{outline:none;border-color:var(--action)}
+
+@media (max-width:900px){
+  .summary{grid-template-columns:1fr}
+  .dopts{grid-template-columns:1fr}
+  .pkg dl{grid-template-columns:1fr 1fr}
+  .chatfab{bottom:96px;right:14px;padding:11px 14px}
+  .chatfab span{display:none}
+  .chatpanel{right:12px;bottom:92px}
+}
+
+.card > h5,.todohead h5{font:800 20px var(--head);margin:0 0 10px;color:var(--ink)}
+.todohead h5{margin:0}
+.seccard > h5{display:flex;align-items:center;gap:8px}
+.seccard > h5 .i{width:20px;height:20px;color:var(--action)}
+
+/* ===== round 6: playground ===== */
+.pgwrap{display:flex;flex-direction:column;gap:14px}
+.sandbox{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;color:var(--ok-ink);background:var(--ok);padding:4px 10px;border-radius:999px}
+.sandbox .i{width:15px;height:15px}
+.sandbox.big{align-self:flex-start;font-size:14px;padding:6px 14px;margin:0}
+.pg .muted{margin:-4px 0 12px}
+.pgbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.pgbar label{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px}
+.pgbar select{font:600 14px var(--mono);border:1.5px solid var(--line-2);border-radius:10px;padding:6px 10px;background:var(--field);color:var(--ink)}
+.pgbar .sandbox{display:none}
+.editor{width:100%;min-height:200px;font:13.5px/1.7 var(--mono);color:var(--ink);background:var(--track);border:1.5px solid var(--line-2);border-radius:14px;padding:12px 14px;resize:vertical;tab-size:2;white-space:pre;overflow:auto}
+.editor:focus{outline:none;border-color:var(--action);box-shadow:0 0 0 3px var(--action-wash)}
+.pgactions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}
+.pgres{margin-top:14px;border-top:1px solid var(--line);padding-top:14px;animation:in .4s var(--ease)}
+.raay p{margin:8px 0 0;font-size:15.5px;font-weight:600}
+.stampx.chipc{background:var(--chip);color:var(--ink-2)}
+.pgchecks{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.pgchecks > div{border-radius:12px;padding:10px 12px}
+.pgchecks .okc{background:var(--ok)}.pgchecks .badc{background:var(--bad)}
+.pgchecks b{font:800 13px var(--head)}
+.pgchecks .okc b{color:var(--ok-ink)}.pgchecks .badc b{color:var(--bad-ink)}
+.pgchecks pre,.predres pre{margin:4px 0 0;font:12.5px/1.5 var(--mono);white-space:pre-wrap;color:var(--ink)}
+.pgimp{margin:12px 0 0;font-size:14.5px}
+.cmp{margin-top:12px}
+.cmp > b{font:800 14px var(--head)}
+.cmpgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:6px}
+.cmpgrid small{font-weight:800;color:var(--ink-3)}
+.code.mini{overflow-x:auto;box-shadow:none;border:1px solid var(--line);padding:8px 0;font-size:12.5px;margin-top:4px}
+.code.mini div{padding:0 10px;gap:8px}
+.confirm{font-weight:800;color:var(--bad-ink)}
+.note2{margin:10px 0 0;font-size:14px;font-weight:600;color:var(--ink-2)}
+.pred{padding:12px 0;border-top:1px dashed var(--line)}
+.pred:first-of-type{border-top:0}
+.pq{font:800 17px/1.35 var(--head);margin:0 0 10px}
+.opts button.picked{border-color:var(--action);background:var(--action-wash);color:var(--action)}
+.pred > .primary{margin-top:10px}
+.predres{margin-top:10px;border-radius:14px;padding:12px 14px;animation:in .4s var(--ease)}
+.predres.good{background:var(--ok)}.predres.meh{background:var(--unk)}
+.predres > b{font:800 15px var(--head)}
+.predres.good > b{color:var(--ok-ink)}.predres.meh > b{color:var(--unk-ink)}
+.predres p{margin:8px 0 0;font-size:14.5px;font-weight:600}
+.challenge .task{font-weight:700;margin:0 0 10px}
+.hints{margin:10px 0 0;padding-left:20px;font-size:14.5px;font-weight:600;color:var(--ink-2);display:flex;flex-direction:column;gap:4px}
+.pvtabs{display:inline-flex;background:var(--chip);border-radius:999px;padding:4px;gap:2px;margin-bottom:12px;flex-wrap:wrap}
+.pvtabs button{border:0;background:none;padding:6px 14px;border-radius:999px;font-weight:800;font-size:14px;cursor:pointer;color:var(--ink-2)}
+.pvtabs button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.browser{border:1px solid var(--line-2);border-radius:14px;overflow:hidden;max-width:560px}
+.bbar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:var(--chip);border-bottom:1px solid var(--line)}
+.bbar i{width:10px;height:10px;border-radius:50%;background:var(--line-2)}
+.bbar span{margin-left:10px;font:600 12px var(--mono);color:var(--ink-2);background:var(--card);padding:3px 10px;border-radius:999px;flex:1}
+.bbody{background:#FFFFFF;color:#1F2430;padding:26px 24px;min-height:250px;font-family:system-ui,sans-serif}
+.mock{max-width:300px;margin:0 auto;display:flex;flex-direction:column;gap:10px}
+.mock h6{margin:0 0 4px;font:700 20px system-ui,sans-serif;color:#1F2430}
+.mock label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:#4A5160}
+.mock input{border:1px solid #CBD0DA;border-radius:6px;padding:8px 10px;font:14px system-ui,sans-serif;color:#1F2430;background:#fff}
+.mbtn{background:#2D6CDF;color:#fff;border:0;border-radius:6px;padding:9px;font:600 14px system-ui,sans-serif;cursor:pointer}
+.mbtn:disabled{opacity:.6;cursor:default}
+.mlink{color:#2D6CDF;font-size:14px;cursor:pointer;text-decoration:underline;align-self:flex-start}
+.mnote{margin:0;font-size:13px;color:#8A90A0}
+.mok{margin:0;color:#1E7A46;font-size:14px;font-weight:600}
+.merr{margin:0;color:#C0303F;font-size:14px;font-weight:600}
+.mbug{margin:0;font-size:13px;color:#8A5A00;background:#FFF4D6;border-radius:6px;padding:8px 10px}
+.mhint{margin:6px 0 0;font-size:12px;color:#8A90A0}
+.pvempty{color:#6A7080;font-size:14px;text-align:center;padding:60px 10px}
+.pgbtn{margin-top:10px}
+@media (max-width:900px){
+  .pgchecks,.cmpgrid{grid-template-columns:1fr}
+  .bbody{padding:18px 14px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="mark"><span class="box" aria-hidden="true"><i></i></span>vibe-explainer</div>
+  <div class="proj"><b>notes-app</b> · <span data-i="sessionName"></span></div>
+  <span class="demo" data-i="demoLabel"></span>
+  <div class="spacer"></div>
+  <div class="rec" id="rec" aria-live="polite"><i></i><span id="recText">REC</span></div>
+  <button class="themebtn" id="themeBtn" aria-label="Dark / light"><svg class="i moon"><use href="#i-moon"/></svg><svg class="i sun"><use href="#i-sun"/></svg></button>
+  <div class="seg" role="group" aria-label="Language">
+    <button data-lang="hi" aria-pressed="true">Hinglish</button><button data-lang="en" aria-pressed="false">English</button>
+  </div>
+  <div class="seg" role="group" aria-label="Level">
+    <button data-level="beg" aria-pressed="true" data-i="beginner"></button><button data-level="dev" aria-pressed="false">Developer</button>
+  </div>
+</header>
+
+<div class="body">
+  <nav class="rail" aria-label="Turns">
+    <h3 data-i="turnsHead"></h3>
+    <div id="turns"></div>
+    <button class="overviewbtn" id="ovBtn" data-i="overview"></button>
+  </nav>
+  <main class="report" id="report">
+    <div id="head"></div>
+    <section class="strip mini" id="strip" aria-label="Timeline">
+      <h2 id="stripTitle"></h2>
+      <div class="chans" aria-hidden="true">
+        <div><svg class="i"><use href="#i-soch"/></svg><span data-i="chSoch"></span></div>
+        <div><svg class="i"><use href="#i-read"/></svg><span data-i="chRead"></span></div>
+        <div><svg class="i"><use href="#i-edit"/></svg><span data-i="chEdit"></span></div>
+        <div><svg class="i"><use href="#i-run"/></svg><span data-i="chRun"></span></div>
+      </div>
+      <div class="trace" id="trace" role="slider" tabindex="0" aria-valuemin="0"></div>
+      <div class="scale num" id="scale"></div>
+    </section>
+    <div id="nav"></div>
+    <div id="content"></div>
+  </main>
+</div>
+
+<button class="chatfab" id="chatFab"><svg class="i"><use href="#i-chat"/></svg><span></span></button>
+<section class="chatpanel" id="chatPanel" hidden aria-label="Chat"></section>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-soch" viewBox="0 0 16 16"><path d="M4.5 11.5h-.2A2.8 2.8 0 0 1 4 6a3.6 3.6 0 0 1 7-.6 2.6 2.6 0 0 1 .8 5.1H7.5L5 13.5z"/></symbol>
+  <symbol id="i-read" viewBox="0 0 16 16"><path d="M1.5 8s2.4-4.5 6.5-4.5S14.5 8 14.5 8 12.1 12.5 8 12.5 1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 16 16"><path d="M10.5 2.5l3 3L6 13H3v-3z"/><path d="M9 4l3 3"/></symbol>
+  <symbol id="i-run" viewBox="0 0 16 16"><rect x="1.5" y="2.5" width="13" height="11" rx="1.5"/><path d="M4.5 6.5l2 1.5-2 1.5M8 10h3.5"/></symbol>
+  <symbol id="t-live" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M4.2 11.8a5.4 5.4 0 0 1 0-7.6M11.8 4.2a5.4 5.4 0 0 1 0 7.6"/></symbol>
+  <symbol id="t-logs" viewBox="0 0 16 16"><path d="M5 4h8M5 8h8M5 12h8M2.5 4h.01M2.5 8h.01M2.5 12h.01"/></symbol>
+  <symbol id="t-changes" viewBox="0 0 16 16"><path d="M2.5 5h5M5 2.5v5M8.5 11.5h5"/><path d="M12 3L4 13" opacity=".5"/></symbol>
+  <symbol id="t-wiring" viewBox="0 0 16 16"><circle cx="3.5" cy="4" r="1.8"/><circle cx="3.5" cy="12" r="1.8"/><circle cx="12.5" cy="8" r="1.8"/><path d="M5.2 4.6l5.6 2.6M5.2 11.4l5.6-2.6"/></symbol>
+  <symbol id="t-impact" viewBox="0 0 16 16"><path d="M8 2l6 11H2z"/><path d="M8 6.5v3M8 11.5h.01"/></symbol>
+  <symbol id="t-seekho" viewBox="0 0 16 16"><path d="M1.5 6L8 3l6.5 3L8 9z"/><path d="M4 7.3v3.4c1 1 2.4 1.5 4 1.5s3-.5 4-1.5V7.3"/></symbol>
+  <symbol id="i-ok" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></symbol>
+  <symbol id="i-unk" viewBox="0 0 16 16"><path d="M6 6a2 2 0 1 1 2.8 1.8c-.5.3-.8.7-.8 1.2v.5M8 12h.01"/></symbol>
+  <symbol id="i-bad" viewBox="0 0 16 16"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="2"/><path d="M10.5 3.5v-.5a1.5 1.5 0 0 0-1.5-1.5H4A1.5 1.5 0 0 0 2.5 3v5A1.5 1.5 0 0 0 4 9.5h.5"/></symbol>
+  <symbol id="i-ask" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M6.6 5.6a1.4 1.4 0 1 1 2 1.3c-.4.2-.6.5-.6.9M8 9.2h.01"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 16 16"><path d="M13.5 9.5A5.5 5.5 0 0 1 6.5 2.5a5.5 5.5 0 1 0 7 7z"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1"/></symbol>
+  <symbol id="i-half" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" fill="currentColor" stroke="none"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 16 16"><path d="M8 1.8l5 2v4c0 3-2.2 5.3-5 6.4-2.8-1.1-5-3.4-5-6.4v-4z"/><path d="M5.8 8l1.5 1.5L10.4 6.4"/></symbol>
+  <symbol id="i-pkg" viewBox="0 0 16 16"><path d="M8 1.8l5.5 3v6.4L8 14.2l-5.5-3V4.8z"/><path d="M2.5 4.8L8 7.8l5.5-3M8 7.8v6.4"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/><path d="M5.5 7h.01M8 7h.01M10.5 7h.01"/></symbol>
+  <symbol id="i-close" viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8"/></symbol>
+  <symbol id="t-todo" viewBox="0 0 16 16"><rect x="2" y="2.5" width="4" height="4" rx="1"/><path d="M3 4.6l.8.8L5.2 4M8.5 4.5h5.5M8.5 11.5h5.5"/><rect x="2" y="9.5" width="4" height="4" rx="1"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 16 16"><path d="M6 3.5L10.5 8 6 12.5"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7h-6l-3 2.5v-2.5h-2z"/></symbol>
+  <symbol id="i-prompt" viewBox="0 0 16 16"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14c.6-2.8 2.6-4 5-4s4.4 1.2 5 4"/></symbol>
+</svg>
+
+<script>
+/* =========================================================
+   SAMPLE DATA - nakli session, sirf mockup ke liye
+   ========================================================= */
+const UI = {
+  sessionName:{hi:"aaj ka session",en:"today's session"},
+  demoLabel:{hi:"Sample data · mockup",en:"Sample data · mockup"},
+  beginner:{hi:"Beginner",en:"Beginner"},
+  chSoch:{hi:"Soch",en:"Thinking"}, chRead:{hi:"Padha",en:"Read"}, chEdit:{hi:"Badla",en:"Edit"}, chRun:{hi:"Chalaya",en:"Run"},
+  turnsHead:{hi:"Prompts (is session ke)",en:"Prompts in this session"},
+  overview:{hi:"Progress, export aur khaaka",en:"Progress, export & map"},
+  tabs:{live:{hi:"Live",en:"Live"},logs:{hi:"Logs",en:"Logs"},changes:{hi:"Changes",en:"Changes"},wiring:{hi:"Wiring",en:"Wiring"},impact:{hi:"Impact",en:"Impact"},seekho:{hi:"Seekho",en:"Learn"}},
+  findings:{hi:"AI ke daawe vs record",en:"The AI's claims vs the record"},
+  stampOk:{hi:"Saboot hai",en:"Backed"}, stampUnk:{hi:"Check nahi ho saka",en:"Can't verify"}, stampBad:{hi:"Saboot nahi",en:"No evidence"},
+  pendingClaims:{hi:"AI abhi kaam kar raha hai. Turn khatam hote hi uske daawe record se milaaye jaayenge.",en:"The AI is still working. Its claims get checked against the record when the turn ends."},
+  follow:{hi:"Live pe wapas",en:"Back to live"},
+  atMoment:{hi:"is pal",en:"at this moment"},
+  recording:{hi:"REC",en:"REC"}, idle:{hi:"Ruka hua",en:"Idle"},
+  seconds:{hi:"sec",en:"s"},
+  steps:{hi:"kadam",en:"steps"}, files:{hi:"files",en:"files"},
+  liveNow:{hi:"Abhi",en:"Now"},
+  colTime:{hi:"Samay",en:"Time"}, colTool:{hi:"Tool",en:"Tool"}, colTarget:{hi:"Kis pe",en:"Target"}, colResult:{hi:"Nateeja",en:"Result"},
+  rawOut:{hi:"Poora output",en:"Full output"},
+  hataya:{hi:"HATAYA",en:"REMOVED"},
+  newFile:{hi:"NAYI FILE",en:"NEW FILE"},
+  legendOld:{hi:"pehle se tha",en:"already there"}, legendNew:{hi:"naya ya badla",en:"new or changed"}, legendRisk:{hi:"dhyan do (impact)",en:"watch this (impact)"},
+  wireHint:{hi:"Kisi dibbe pe click karo: wo kisse juda hai, sirf wahi dikhega.",en:"Click a box to see only what it connects to."},
+  riskLow:{hi:"Kam",en:"Low"}, riskMid:{hi:"Beech",en:"Medium"}, riskHigh:{hi:"Zyada",en:"High"},
+  whatToDo:{hi:"Kya karo:",en:"What to do:"},
+  lWhat:{hi:"Kya hua",en:"What happened"}, lWhy:{hi:"Kyun",en:"Why"}, lHow:{hi:"Kaise kaam karta hai",en:"How it works"},
+  lBA:{hi:"Pehle vs ab",en:"Before vs after"}, before:{hi:"Pehle",en:"Before"}, after:{hi:"Ab",en:"After"},
+  lConcepts:{hi:"Naye concepts jo is change mein aaye",en:"New concepts in this change"},
+  quizHead:{hi:"Chhota quiz",en:"Quick quiz"},
+  score:{hi:"Sahi",en:"Correct"},
+  ebHead:{hi:"Apne shabdon mein samjhao",en:"Explain it in your own words"},
+  ebPh:{hi:"Is change ne kya kiya, 2-3 line mein likho. AI check karega tum sahi ho ya nahi.",en:"Write in 2-3 lines what this change did. The AI checks whether you got it."},
+  ebBtn:{hi:"Check karo",en:"Check it"},
+  ebDone:{hi:"Mockup mein ye check asli nahi hai. Asli tool mein teacher tumhara jawab lesson se milaayega aur batayega kya chhoot gaya.",en:"This check isn't real in the mockup. In the real tool the teacher compares your answer with the lesson and tells you what you missed."},
+  lessonPending:{hi:"Lesson turn khatam hone ke baad banega. Tab tak Live aur Logs dekho.",en:"The lesson is written when the turn ends. Watch Live and Logs until then."},
+  nothingYet:{hi:"Abhi tak koi file nahi badli.",en:"No file has changed yet."},
+  ovLede:{hi:"Is project ke main hisse, aur aaj ke session ne kaunse chhue. Peela = aaj badla.",en:"The main parts of this project, and which ones today's session touched. Yellow = changed today."},
+  fPrompts:{hi:"prompts",en:"prompts"}, fFiles:{hi:"files badli",en:"files changed"}, fFlags:{hi:"daawa bina saboot",en:"claim without evidence"}, fTime:{hi:"kul samay",en:"total time"},
+};
+
+const TURNS = [
+ { id:1, prompt:{hi:"Notes app ka basic layout banao",en:"Build the basic notes app layout"}, dur:28, live:false,
+   events:[
+    {t:0,ch:"prompt",text:{hi:"Prompt mila",en:"Prompt received"}},
+    {t:2,ch:"soch",text:{hi:"Khaali project hai, pehle App aur ek list chahiye.",en:"Empty project, I need an App and a list first."}},
+    {t:4,ch:"read",target:"package.json",text:{hi:"Project ki settings padhi",en:"Read the project settings"}},
+    {t:9,ch:"edit",target:"src/App.jsx",text:{hi:"App mein header aur NoteList lagaya",en:"Added a header and NoteList to App"},add:14,del:3},
+    {t:16,ch:"edit",target:"src/components/NoteList.jsx",text:{hi:"NoteList component banaya",en:"Created the NoteList component"},add:22,del:0,isNew:true},
+    {t:22,ch:"run",target:"npm run dev",text:{hi:"App chala ke dekha",en:"Started the app to check it"},result:"ok",raw:"VITE v5.4.10  ready in 412 ms\n➜  Local:   http://localhost:5173/"},
+    {t:27,ch:"msg",text:{hi:"Layout ban gaya: header aur notes ki list.",en:"Layout done: a header and a notes list."}}
+   ],
+   claims:[{s:"ok",q:{hi:"Layout ban gaya: header aur notes ki list.",en:"Layout done: a header and a notes list."},ev:{hi:"App.jsx aur NoteList.jsx badle (9s, 16s), aur app chal ke dekhi gayi (22s).",en:"App.jsx and NoteList.jsx changed (9s, 16s), and the app was started (22s)."},at:22}],
+   files:[{path:"src/components/NoteList.jsx",isNew:true,add:22,del:0,hunks:[{lines:[["+","export function NoteList({ notes }) {"],["+","  return ("],["+","    <ul className=\"notes\">"],["+","      {notes.map(n => <li key={n.id}>{n.title}</li>)}"],["+","    </ul>"],["+","  );"],["+","}"]],
+     note:{beg:{hi:"Ek naya 'tukda' (component) jo notes ki list dikhata hai. Har note ek line ban jaata hai.",en:"A new piece (component) that shows the list of notes. Each note becomes one line."},dev:{hi:"Stateless list component; key={n.id} se React rows ko pehchaanta hai.",en:"Stateless list component; key={n.id} lets React track rows."}}}]}],
+   wiring:{nodes:[{id:"app",x:60,y:60,label:"App.jsx",k:"page",st:"changed"},{id:"list",x:340,y:60,label:"NoteList.jsx",k:"component",st:"new"}],edges:[["app","list","new"]],info:{app:{hi:"App, NoteList ko dikhata hai.",en:"App renders NoteList."},list:{hi:"Naya component, sirf App use karta hai.",en:"New component, only App uses it."}}},
+   impact:[{r:1,title:{hi:"Naya component, abhi sirf ek jagah",en:"New component, used in one place"},where:"App.jsx → NoteList",why:{hi:"Kuch purana nahi toota, kyunki pehle kuch tha hi nahi.",en:"Nothing old can break; there was nothing before."},fix:{hi:"Kuch nahi.",en:"Nothing."}}],
+   lesson:{big:{hi:"Khaali project mein pehla dhaancha bana: ek header, aur notes dikhane ka component.",en:"The first frame of an empty project: a header and a component that shows notes."},why:{hi:"Tumne basic layout maanga tha. Isliye sirf dikhne wala hissa bana, data abhi nakli hai.",en:"You asked for a basic layout, so only the visible part was built; the data is still fake."},how:[],before:{hi:"Khaali safed page.",en:"A blank page."},after:{hi:"Header aur ek (khaali) notes list.",en:"A header and an (empty) notes list."},concepts:[{n:"component",d:{hi:"UI ka ek chhota, dobara use hone wala tukda.",en:"A small reusable piece of UI."}}],quiz:[{q:{hi:"NoteList ko notes kahan se milte hain?",en:"Where does NoteList get its notes from?"},o:[{hi:"Khud bana leta hai",en:"It makes them itself"},{hi:"App usko 'notes' prop mein deta hai",en:"App passes them in the 'notes' prop"},{hi:"Internet se",en:"From the internet"}],a:1,e:{hi:"({ notes }) ka matlab: jo bhi isko use kare, wo notes de.",en:"({ notes }) means whoever uses it passes the notes in."}}]}
+ },
+ { id:2, prompt:{hi:"Notes ko localStorage mein save karo",en:"Save notes in localStorage"}, dur:31, live:false,
+   events:[
+    {t:0,ch:"prompt",text:{hi:"Prompt mila",en:"Prompt received"}},
+    {t:3,ch:"read",target:"src/App.jsx",text:{hi:"App padha",en:"Read App"}},
+    {t:6,ch:"soch",text:{hi:"Notes ki state App mein hai, wahi save karna hoga.",en:"Notes state lives in App, so I save it there."}},
+    {t:9,ch:"run",target:"npm install nanoid",text:{hi:"nanoid package daala",en:"Installed the nanoid package"},result:"ok",raw:"added 1 package, audited 212 packages in 1s\nfound 0 vulnerabilities"},
+    {t:11,ch:"edit",target:"src/hooks/useNotes.js",text:{hi:"useNotes hook banaya jo localStorage use karta hai",en:"Created a useNotes hook backed by localStorage"},add:19,del:0,isNew:true},
+    {t:18,ch:"edit",target:"src/App.jsx",text:{hi:"App ko useNotes pe shift kiya",en:"Switched App to useNotes"},add:2,del:4},
+    {t:25,ch:"run",target:"npm test",text:{hi:"Tests chalaaye",en:"Ran the tests"},result:"ok",raw:"✓ src/hooks/useNotes.test.js (3 tests) 18ms\nTest Files  1 passed (1)\n     Tests  3 passed (3)"},
+    {t:30,ch:"msg",text:{hi:"Notes ab refresh ke baad bhi rehte hain. 3 tests pass.",en:"Notes now survive a refresh. 3 tests pass."}}
+   ],
+   claims:[{s:"ok",q:{hi:"Notes ab refresh ke baad bhi rehte hain.",en:"Notes now survive a refresh."},ev:{hi:"useNotes.js localStorage mein likhta aur padhta hai (11s).",en:"useNotes.js writes and reads localStorage (11s)."},at:11},{s:"ok",q:{hi:"3 tests pass.",en:"3 tests pass."},ev:{hi:"npm test chala, output: 3 passed (25s).",en:"npm test ran, output: 3 passed (25s)."},at:25}],
+   files:[{path:"src/hooks/useNotes.js",isNew:true,add:19,del:0,hunks:[{lines:[["+","export function useNotes() {"],["+","  const [notes, setNotes] = useState(() =>"],["+","    JSON.parse(localStorage.getItem('notes') ?? '[]'));"],["+","  useEffect(() => {"],["+","    localStorage.setItem('notes', JSON.stringify(notes));"],["+","  }, [notes]);"],["+","  return [notes, setNotes];"],["+","}"]],
+     note:{beg:{hi:"Browser ki ek chhoti tijori (localStorage) mein notes rakhe jaate hain, taaki page band karke kholne pe bhi rahein.",en:"Notes go into the browser's small safe (localStorage), so they stay after you close the page."},dev:{hi:"Lazy initial state + effect jo har change pe serialize karta hai.",en:"Lazy initial state plus an effect that serializes on every change."}}}]}],
+   wiring:{nodes:[{id:"app",x:60,y:60,label:"App.jsx",k:"page",st:"changed"},{id:"hook",x:340,y:60,label:"useNotes()",k:"hook",st:"new"},{id:"ls",x:340,y:170,label:"localStorage",k:"browser",st:"old"}],edges:[["app","hook","new"],["hook","ls","new"]],info:{app:{hi:"App ab notes useNotes se leta hai.",en:"App now gets notes from useNotes."},hook:{hi:"Naya hook, localStorage se baat karta hai.",en:"New hook; talks to localStorage."},ls:{hi:"Browser ki storage.",en:"The browser's storage."}}},
+   impact:[{r:1,title:{hi:"Purane notes ka format",en:"Old notes format"},where:"localStorage 'notes'",why:{hi:"Agar baad mein note ka format badla, to purane save hue notes padhne mein dikkat aa sakti hai.",en:"If the note format changes later, older saved notes may not load."},fix:{hi:"Abhi kuch nahi, bas yaad rakho.",en:"Nothing now, just remember it."}}],
+   lesson:{big:{hi:"Notes ab browser mein save hote hain, isliye refresh pe gaayab nahi hote.",en:"Notes are now saved in the browser, so a refresh no longer wipes them."},why:{hi:"Tumne save karna maanga tha.",en:"You asked for saving."},how:[],before:{hi:"Refresh = sab notes gaayab.",en:"Refresh = all notes gone."},after:{hi:"Refresh ke baad bhi notes wahi.",en:"Notes are still there after a refresh."},concepts:[{n:"localStorage",d:{hi:"Browser mein chhota sa data rakhne ki jagah.",en:"A small place to keep data in the browser."}},{n:"useEffect",d:{hi:"Kuch badle to ye code chalao.",en:"Run this code when something changes."}}],quiz:[{q:{hi:"Notes kab save hote hain?",en:"When are notes saved?"},o:[{hi:"Sirf app band karne pe",en:"Only when the app closes"},{hi:"Har baar jab notes badalte hain",en:"Every time notes change"},{hi:"Har 5 minute",en:"Every 5 minutes"}],a:1,e:{hi:"useEffect(..., [notes]): notes badle to save.",en:"useEffect(..., [notes]): save when notes change."}}]}
+ },
+ { id:3, prompt:{hi:"Login pe 'Forgot password' button lagao, email pe reset link jaaye",en:"Add a 'Forgot password' button to login; send a reset link by email"}, dur:46, live:false,
+   events:[
+    {t:0,ch:"prompt",text:{hi:"Prompt mila",en:"Prompt received"}},
+    {t:2,ch:"soch",text:{hi:"Pehle dekhta hoon login page abhi kaisa hai.",en:"First I'll look at how the login page works now."}},
+    {t:3,ch:"read",target:"src/pages/LoginPage.jsx",text:{hi:"Login page padha (64 lines)",en:"Read the login page (64 lines)"}},
+    {t:5,ch:"read",target:"src/api/auth.js",text:{hi:"Login ka API code padha",en:"Read the login API code"}},
+    {t:7,ch:"read",target:"src/App.jsx",text:{hi:"Routes dekhe",en:"Looked at the routes"}},
+    {t:9,ch:"soch",text:{hi:"Reset ke liye auth.js mein naya function chahiye, aur ek naya page.",en:"Reset needs a new function in auth.js and a new page."}},
+    {t:12,ch:"edit",target:"src/api/auth.js",text:{hi:"requestPasswordReset() joda, login() ka error badla",en:"Added requestPasswordReset(), changed login()'s error"},add:11,del:1,file:"src/api/auth.js"},
+    {t:19,ch:"edit",target:"src/pages/LoginPage.jsx",text:{hi:"Login button ke neeche 'Forgot password?' link",en:"Added a 'Forgot password?' link under the login button"},add:3,del:0,file:"src/pages/LoginPage.jsx"},
+    {t:24,ch:"edit",target:"src/pages/ResetPassword.jsx",text:{hi:"Naya Reset page banaya",en:"Created the new Reset page"},add:34,del:0,isNew:true,file:"src/pages/ResetPassword.jsx"},
+    {t:31,ch:"edit",target:"src/App.jsx",text:{hi:"/reset route joda",en:"Added the /reset route"},add:2,del:0,file:"src/App.jsx"},
+    {t:32,ch:"run",target:"npm run lint",text:{hi:"Lint chalaya: 1 error aaya",en:"Ran lint: 1 error"},result:"fail",raw:"src/pages/LoginPage.jsx\n  49:8  error  'Link' is not defined  react/jsx-no-undef\n\n✖ 1 problem (1 error, 0 warnings)",err:{simple:{hi:"Lint ne bataya ki LoginPage.jsx mein `Link` use hua, par file ke upar uska import nahi hai. Jaise kisi ko naam se bulao, par wo kamre mein hi nahi hai.",en:"Lint says LoginPage.jsx uses `Link`, but the file never imports it. Like calling someone by name who isn't in the room."},fix:{hi:"AI ne 00:33 pe file ke upar `import { Link } from 'react-router-dom'` joda, phir lint dobara chalaya (00:35), aur is baar sab saaf aaya.",en:"At 00:33 the AI added `import { Link } from 'react-router-dom'` at the top, ran lint again (00:35), and it came back clean."}}},
+    {t:33,ch:"edit",target:"src/pages/LoginPage.jsx",text:{hi:"Link ka import joda (error theek kiya)",en:"Added the Link import (fixed the error)"},add:1,del:0},
+    {t:35,ch:"run",target:"npm run lint",text:{hi:"Lint chalaya (code ki safai check)",en:"Ran lint (code style check)"},result:"ok",raw:"> notes-app@0.1.0 lint\n> eslint src\n\n✔ 0 problems"},
+    {t:38,ch:"soch",text:{hi:"Lint saaf hai. Ab bata deta hoon.",en:"Lint is clean. Time to report."}},
+    {t:44,ch:"msg",bad:true,text:{hi:"Forgot password jod diya: /reset page bana, email pe link jaata hai, aur tests pass ho gaye.",en:"Forgot password is in: /reset page added, a link goes by email, and the tests pass."}}
+   ],
+   claims:[
+    {s:"ok",q:{hi:"/reset page bana",en:"/reset page added"},ev:{hi:"ResetPassword.jsx bani (24s) aur App.jsx mein route juda (31s).",en:"ResetPassword.jsx was created (24s) and the route added in App.jsx (31s)."},at:24},
+    {s:"unk",q:{hi:"Email pe link jaata hai",en:"A link goes by email"},ev:{hi:"Frontend sirf /auth/reset ko call karta hai (12s). Email bhejna server ka kaam hai, aur server is project mein nahi hai.",en:"The frontend only calls /auth/reset (12s). Sending the email is the server's job, and the server isn't in this project."},at:12},
+    {s:"bad",q:{hi:"Tests pass ho gaye",en:"The tests pass"},ev:{hi:"Is turn mein koi test nahi chala. Sirf lint chala (35s), jo sirf code ki safai dekhta hai, kaam nahi.",en:"No test ran in this turn. Only lint ran (35s), which checks style, not behaviour."},at:35}
+   ],
+   files:[
+    {path:"src/api/auth.js",add:11,del:1,hunks:[
+      {start:12,lines:[[" ","export async function login(email, password) {"],[" ","  const res = await http.post('/auth/login', { email, password });"],["-","  if (!res.ok) throw new Error('Login failed');"],["+","  if (!res.ok) {"],["+","    throw new AuthError(res.status, await res.text());"],["+","  }"],[" ","  return res.json();"],[" ","}"]],
+       note:{beg:{hi:"Login fail hone pe pehle sirf 'Login failed' aata tha. Ab server ka asli kaaran aur code (jaise 401) saath aata hai.",en:"A failed login used to say only 'Login failed'. Now it carries the server's real reason and code (like 401)."},dev:{hi:"Error ka type Error se AuthError ho gaya, jisme status hai. Jo bhi code error.message pe chalta tha, uska output badlega (Impact dekho).",en:"Error type changed from Error to AuthError with a status. Anything relying on error.message now gets a different string (see Impact)."}}},
+      {start:21,lines:[["+",""],["+","export async function requestPasswordReset(email) {"],["+","  const res = await http.post('/auth/reset', { email });"],["+","  if (!res.ok) {"],["+","    throw new AuthError(res.status, 'Reset link nahi bhej paaye');"],["+","  }"],["+","  return true;"],["+","}"]],
+       note:{beg:{hi:"Naya function: user ka email server ko bhejta hai aur kehta hai 'is email pe reset link bhejo'. Email server bhejega, ye code nahi.",en:"New function: sends the user's email to the server, asking it to send a reset link. The server sends the email, not this code."},dev:{hi:"POST /auth/reset. Success pe true, warna AuthError. Server endpoint is repo mein nahi hai, to iska contract check nahi ho saka.",en:"POST /auth/reset. Returns true, or throws AuthError. The server endpoint isn't in this repo, so its contract is unchecked."}}}
+    ]},
+    {path:"src/pages/LoginPage.jsx",add:3,del:0,hunks:[
+      {start:48,lines:[[" ","      <button type=\"submit\">Login</button>"],["+","      <Link to=\"/reset\" className=\"forgot\">"],["+","        Forgot password?"],["+","      </Link>"],[" ","    </form>"]],
+       note:{beg:{hi:"Login button ke neeche ek link, jo dabane pe /reset page kholta hai.",en:"A link under the login button that opens the /reset page."},dev:{hi:"react-router ka <Link>, isliye page reload nahi hota.",en:"react-router <Link>, so no full page reload."}}}
+    ]},
+    {path:"src/pages/ResetPassword.jsx",isNew:true,add:34,del:0,hunks:[
+      {start:1,lines:[["+","export function ResetPassword() {"],["+","  const [email, setEmail] = useState('');"],["+","  const [sent, setSent] = useState(false);"],["+",""],["+","  async function onSubmit(e) {"],["+","    e.preventDefault();"],["+","    await requestPasswordReset(email);"],["+","    setSent(true);"],["+","  }"],["+","  // ... form aur 'link bhej diya' message"]],
+       note:{beg:{hi:"Naya page: ek email ka dabba aur button. Button dabao to upar wala naya function chalta hai, phir 'link bhej diya' dikhta hai.",en:"New page: an email box and a button. Pressing it runs the new function above, then shows 'link sent'."},dev:{hi:"Dhyan do: await fail hua to error pakda nahi jaata, aur user ko kuch nahi dikhega (Impact).",en:"Note: if the await throws, nothing catches it and the user sees nothing (see Impact)."}}}
+    ]},
+    {path:"src/App.jsx",add:2,del:0,hunks:[
+      {start:18,lines:[[" ","        <Route path=\"/login\" element={<LoginPage />} />"],["+","        <Route path=\"/reset\" element={<ResetPassword />} />"],[" ","      </Routes>"]],
+       note:{beg:{hi:"App ko bataya: /reset address pe naya Reset page dikhao.",en:"Tells the app: show the new Reset page at the /reset address."},dev:{hi:"Ek naya route; auth guard nahi hai, jo reset ke liye sahi hai.",en:"One new route, no auth guard, which is right for reset."}}}
+    ]}
+   ],
+   wiring:{nodes:[
+     {id:"app",x:30,y:40,label:"App.jsx",k:"routes",st:"changed"},
+     {id:"login",x:260,y:20,label:"LoginPage.jsx",k:"page",st:"changed"},
+     {id:"reset",x:260,y:120,label:"ResetPassword.jsx",k:"page",st:"new"},
+     {id:"signup",x:260,y:220,label:"SignupPage.jsx",k:"page",st:"old"},
+     {id:"fLogin",x:520,y:60,label:"login()",k:"auth.js",st:"risk"},
+     {id:"fReset",x:520,y:160,label:"requestPasswordReset()",k:"auth.js",st:"new"},
+     {id:"http",x:790,y:110,label:"http.post()",k:"api/client.js",st:"old"}],
+    edges:[["app","login"],["app","reset","new"],["app","signup"],["login","reset","new"],["login","fLogin"],["signup","fLogin"],["reset","fReset","new"],["fLogin","http"],["fReset","http","new"]],
+    info:{app:{hi:"App teen pages ko routes se jodta hai. /reset naya hai.",en:"App connects three pages by route. /reset is new."},login:{hi:"Login page ab Reset page ka link bhi deta hai, aur login() use karta hai.",en:"The login page now links to Reset and still uses login()."},reset:{hi:"Naya page. Sirf requestPasswordReset() ko call karta hai.",en:"New page. Only calls requestPasswordReset()."},signup:{hi:"Is turn mein nahi chhua, par ye bhi login() use karta hai. Isliye Impact mein hai.",en:"Not touched this turn, but it also uses login(). That's why it's in Impact."},fLogin:{hi:"Iska error badla. Do pages isko use karte hain.",en:"Its error changed. Two pages use it."},fReset:{hi:"Naya function, server ko /auth/reset bhejta hai.",en:"New function, posts to /auth/reset."},http:{hi:"Sab API calls isi se jaati hain. Ye nahi badla.",en:"All API calls go through this. Unchanged."}}},
+   impact:[
+    {r:2,title:{hi:"SignupPage bhi login() use karta hai",en:"SignupPage also uses login()"},where:"src/pages/SignupPage.jsx → login()",why:{hi:"Signup ke baad apne aap login hota hai. login() ka error ab AuthError hai aur message server ka. Agar SignupPage 'Login failed' text pe check karta tha, to wo check ab kabhi match nahi karega.",en:"Signup logs you in automatically. login() now throws AuthError with the server's text. If SignupPage checked for the text 'Login failed', that check never matches now."},fix:{hi:"SignupPage mein error handling dekho, ya AI se kaho: 'SignupPage ko naye AuthError ke hisaab se theek karo'.",en:"Check the error handling in SignupPage, or ask the AI: 'update SignupPage for the new AuthError'."}},
+    {r:2,title:{hi:"Reset fail hua to user ko kuch nahi dikhta",en:"If reset fails, the user sees nothing"},where:"src/pages/ResetPassword.jsx → onSubmit",why:{hi:"requestPasswordReset() error de to onSubmit usko pakadta nahi. Button daba ke user intezaar karta rahega.",en:"If requestPasswordReset() throws, onSubmit doesn't catch it. The user presses the button and waits forever."},fix:{hi:"try/catch lagao aur error message dikhao.",en:"Add try/catch and show an error message."}},
+    {r:1,title:{hi:"Naya route /reset",en:"New route /reset"},where:"src/App.jsx",why:{hi:"Naya address hai, purane address nahi badle.",en:"A new address; existing ones are unchanged."},fix:{hi:"Kuch nahi.",en:"Nothing."}}
+   ],
+   lesson:{
+    big:{hi:"Login page pe 'Forgot password?' link aaya, jo ek naye Reset page pe le jaata hai. Wahan email daalo to app server se reset link bhejne ko kehta hai.",en:"The login page got a 'Forgot password?' link that opens a new Reset page. Enter your email there and the app asks the server to send a reset link."},
+    why:{hi:"Tumne do cheezein maangi thi: button, aur email pe link. Button poora bana. Email wala hissa sirf aadha is project mein hai: app server ko bolta hai, par email bhejna server karega, aur server yahan nahi hai.",en:"You asked for two things: a button, and a link by email. The button is fully done. The email half only partly lives here: the app asks the server, but the server sends the email, and the server isn't in this project."},
+    how:[
+     {beg:{hi:"1. User 'Forgot password?' dabata hai → /reset page khulta hai.",en:"1. The user clicks 'Forgot password?' → the /reset page opens."},dev:{hi:"1. <Link to=\"/reset\"> → react-router ResetPassword render karta hai.",en:"1. <Link to=\"/reset\"> → react-router renders ResetPassword."}},
+     {beg:{hi:"2. Email daal ke button dabata hai → requestPasswordReset(email) chalta hai.",en:"2. They enter an email and press the button → requestPasswordReset(email) runs."},dev:{hi:"2. onSubmit → requestPasswordReset(email) → POST /auth/reset.",en:"2. onSubmit → requestPasswordReset(email) → POST /auth/reset."}},
+     {beg:{hi:"3. Server 'theek hai' bole to page pe 'link bhej diya' aata hai.",en:"3. If the server says OK, the page shows 'link sent'."},dev:{hi:"3. res.ok → true → setSent(true). Fail pe AuthError, jo abhi koi pakadta nahi.",en:"3. res.ok → true → setSent(true). On failure AuthError, which nothing catches yet."}}
+    ],
+    before:{hi:"Password bhoole to koi raasta nahi tha.",en:"Forgot your password? No way back in."},
+    after:{hi:"Login page se Reset page, wahan se server ko reset ki request.",en:"Login page → Reset page → a reset request to the server."},
+    concepts:[
+     {n:"route",d:{hi:"Ek address (jaise /reset) aur us pe dikhne wala page.",en:"An address (like /reset) and the page it shows."}},
+     {n:"async / await",d:{hi:"Server ka jawab aane tak ruko, phir aage badho.",en:"Wait for the server's answer, then continue."}},
+     {n:"custom error (AuthError)",d:{hi:"Apna error type, jisme status code jaisi extra jaankari hoti hai.",en:"Your own error type that carries extra info like the status code."}}
+    ],
+    quiz:[
+     {q:{hi:"Reset ka email asal mein kaun bhejta hai?",en:"Who actually sends the reset email?"},o:[{hi:"ResetPassword.jsx",en:"ResetPassword.jsx"},{hi:"Server, jab use /auth/reset request milti hai",en:"The server, when it gets the /auth/reset request"},{hi:"Browser",en:"The browser"}],a:1,e:{hi:"App sirf server ko kehta hai. Email bhejna server ka kaam hai.",en:"The app only asks the server. Sending email is the server's job."}},
+     {q:{hi:"AI ne kaha 'tests pass ho gaye'. Record mein kya chala tha?",en:"The AI said 'the tests pass'. What actually ran?"},o:[{hi:"npm test",en:"npm test"},{hi:"Sirf npm run lint",en:"Only npm run lint"},{hi:"Kuch nahi",en:"Nothing"}],a:1,e:{hi:"Lint sirf code ki safai dekhta hai. Tests chale hi nahi, isliye daawe pe laal stamp hai.",en:"Lint only checks style. No tests ran, which is why the claim carries the red stamp."}},
+     {q:{hi:"login() ka error badalne se kaunsa doosra page affect ho sakta hai?",en:"Changing login()'s error can affect which other page?"},o:[{hi:"SignupPage",en:"SignupPage"},{hi:"ResetPassword",en:"ResetPassword"},{hi:"Koi nahi",en:"None"}],a:0,e:{hi:"SignupPage bhi login() call karta hai. Wiring mein dekho.",en:"SignupPage also calls login(). See Wiring."}}
+    ]}
+ },
+ { id:4, prompt:{hi:"Dark mode ka toggle lagao",en:"Add a dark mode toggle"}, dur:0, live:true, events:[], claims:[], files:[], wiring:null, impact:[], lesson:null }
+];
+
+/* turn 4 aata hua (live simulation) */
+const LIVE_SCRIPT = [
+ {t:0,ch:"prompt",text:{hi:"Prompt mila",en:"Prompt received"}},
+ {t:2,ch:"soch",text:{hi:"Theme kahan set hoti hai, ye dhoondhna hoga.",en:"I need to find where the theme is set."}},
+ {t:4,ch:"read",target:"src/index.css",text:{hi:"Styles padhe",en:"Read the styles"}},
+ {t:6,ch:"read",target:"src/App.jsx",text:{hi:"App padha",en:"Read App"}},
+ {t:9,ch:"soch",text:{hi:"CSS variables bana ke ek data-theme attribute se badal dunga.",en:"I'll add CSS variables and switch them with a data-theme attribute."}},
+ {t:13,ch:"edit",target:"src/index.css",text:{hi:"Light aur dark ke rang variables mein daale",en:"Moved light and dark colours into variables"},add:18,del:6},
+ {t:19,ch:"edit",target:"src/components/ThemeToggle.jsx",text:{hi:"ThemeToggle button banaya",en:"Created the ThemeToggle button"},add:21,del:0,isNew:true},
+];
+
+/* =========================================================
+   STATE
+   ========================================================= */
+const S = {turn:3, tab:"live", lang:"hi", level:"beg", cur:46, followLive:false, view:"turn", file:0, wireSel:null, quiz:{}};
+const T = o => (o && typeof o==="object") ? (o[S.lang] ?? o.hi) : (o ?? "");
+const L = o => o ? T(o[S.level]) : "";
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+const turn = () => TURNS.find(x=>x.id===S.turn);
+const icon = ch => `<svg class="i"><use href="#i-${({soch:"soch",read:"read",edit:"edit",run:"run",msg:"msg",prompt:"prompt"})[ch]}"/></svg>`;
+const fmt = s => { s=Math.max(0,Math.round(s)); return `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`; };
+
+/* =========================================================
+   RENDER: static labels
+   ========================================================= */
+function labels(){
+  document.documentElement.lang = S.lang==="hi" ? "hi-Latn" : "en";
+  document.querySelectorAll("[data-i]").forEach(el=>el.textContent=T(UI[el.dataset.i]));
+  document.querySelectorAll("[data-lang]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.lang===S.lang));
+  document.querySelectorAll("[data-level]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.level===S.level));
+}
+
+/* ---------- rail ---------- */
+function rail(){
+  $("#turns").innerHTML = TURNS.map(x=>{
+    const bad = x.claims.filter(c=>c.s==="bad").length;
+    const meta = x.live
+      ? `<span class="dot"></span>${T(UI.liveNow)} · ${x.events.length} ${T(UI.steps)}`
+      : `${x.dur}${T(UI.seconds)} · ${x.files.length} ${T(UI.files)}${bad?` <span class="flag">${bad} ${T(UI.stampBad).toLowerCase()}</span>`:""}`;
+    return `<button class="turn" data-turn="${x.id}" aria-current="${S.view==="turn"&&x.id===S.turn}"><span class="n">${String(x.id).padStart(2,"0")}</span><span class="p">${esc(T(x.prompt))}</span><span class="meta">${meta}${S.done[x.id]?`<span class="donetag"><svg class="i"><use href="#i-ok"/></svg>${S.lang==="hi"?"seekh liya":"learned"}</span>`:""}</span></button>`;
+  }).join("");
+  $("#ovBtn").setAttribute("aria-current", S.view==="overview");
+  const cur = document.querySelector('.turn[aria-current="true"]'); const rl = $(".rail");
+  if(cur && rl.scrollWidth>rl.clientWidth) rl.scrollLeft = cur.offsetLeft - 8;
+}
+
+/* ---------- strip ---------- */
+function strip(){
+  const x = turn(); const dur = Math.max(x.live ? Math.max(30,x.dur+6) : x.dur, 1);
+  const tr = $("#trace"); const w = tr.clientWidth || 800;
+  tr.style.setProperty("--minor", (w/dur<10 ? w/dur*10 : w/dur)+"px"); tr.style.setProperty("--major",(w/dur*10)+"px");
+  const row = {soch:0,read:1,edit:2,run:3,msg:0,prompt:0};
+  let h = "";
+  x.events.forEach((e,i)=>{
+    const next = x.events[i+1]; const len = next ? Math.max(.6,(next.t-e.t)*.8) : .8;
+    const cls = e.ch==="msg"||e.ch==="prompt" ? "soch" : e.ch;
+    const left = e.t/dur*100, width = len/dur*100;
+    h += `<span class="tick ${cls} ${e.bad||e.result==="fail"?"bad":""} ${e.t<=S.cur?"past":"future"}" style="left:${left}%;width:${width}%;top:${row[e.ch]*32}px" title="${fmt(e.t)} ${esc(T(e.text))}"></span>`;
+  });
+  h += `<span class="cursor ${x.live&&S.followLive?"live":""}" style="left:${Math.min(S.cur,dur)/dur*100}%"></span>`;
+  x.claims.forEach(c=>{ h += `<span class="pin ${c.s}" style="left:${c.at/dur*100}%" title="${esc(T(c.q))}"></span>`; });
+  ["soch","read","edit","run"].forEach((k,i)=>{ h += `<span class="chanic ch-${k}" style="top:${i*32+4}px" aria-hidden="true">${icon(k)}</span>`; });
+  tr.innerHTML = h;
+  tr.setAttribute("aria-valuemax",dur); tr.setAttribute("aria-valuenow",Math.round(S.cur)); tr.setAttribute("aria-valuetext",fmt(S.cur));
+  tr.setAttribute("aria-label", S.lang==="hi"?"Recorder strip: samay chuno":"Recorder strip: pick a moment");
+  const marks = []; for(let s=0;s<=dur;s+=10) marks.push(`<span style="left:${s/dur*100}%">${fmt(s)}</span>`);
+  $("#scale").innerHTML = marks.join("");
+  $("#stripTitle").innerHTML = `<span class="tlname">${T(UI2.tl)}</span><span class="num">${T(UI.atMoment)}: ${fmt(S.cur)}</span><span class="grow"></span><button class="follow ${x.live&&!S.followLive?"show":""}" id="followBtn">${T(UI.follow)}</button><button class="ghost sm" id="tlToggle">${S.stripOpen?T(UI2.closeTl):T(UI2.openTl)}</button>`;
+  $("#strip").classList.toggle("mini",!S.stripOpen); $("#strip").hidden = S.view==="overview";
+  const r = $("#rec"); const anyLive = TURNS.some(t=>t.live);
+  r.classList.toggle("off",!anyLive);
+  $("#recText").textContent = anyLive ? `${T(UI.recording)} ${fmt(TURNS[3].dur)}` : T(UI.idle);
+}
+
+/* ---------- extra sample data for the new features ---------- */
+const UI2 = {
+  steps:[{hi:"Kya hua",en:"What happened"},{hi:"Kya badla",en:"What changed"},{hi:"Dhyan do",en:"Watch out"},{hi:"Khud try karo",en:"Try it"},{hi:"Ab kya karo",en:"To-do"},{hi:"Quiz",en:"Quiz"}],
+  back:{hi:"Peeche",en:"Back"}, next:{hi:"Aage",en:"Next"}, finish:{hi:"Lesson poora",en:"Finish lesson"}, doneMsg:{hi:"Shabaash! Ye lesson poora ho gaya.",en:"Nice! This lesson is done."},
+  timelineChip:{hi:"Timeline pe",en:"On the timeline"}, backToLesson:{hi:"Lesson pe wapas",en:"Back to the lesson"},
+  openTl:{hi:"Poori timeline kholo",en:"Open full timeline"}, closeTl:{hi:"Chhoti karo",en:"Collapse"}, tl:{hi:"Timeline",en:"Timeline"},
+  claimsOk:{hi:"daawe record se match karte hain",en:"claims match the record"},
+  claimsMix:{hi:"daawe check kiye",en:"claims checked"},
+  badLine:{hi:"AI ne kaha",en:"The AI said"}, badBut:{hi:"par record mein iska saboot nahi hai.",en:"but the record has no evidence for it."},
+  allClaims:{hi:"Saare daawe",en:"All claims"}, hideClaims:{hi:"Chhupao",en:"Hide"},
+  runTests:{hi:"Tests chalao",en:"Run the tests"}, running:{hi:"npm test chal raha hai…",en:"Running npm test…"},
+  copyFix:{hi:"Fix prompt copy karo",en:"Copy fix prompt"}, copied:{hi:"Copy ho gaya",en:"Copied"},
+  copy:{hi:"Copy",en:"Copy"},
+  fixPromptHead:{hi:"AI ko ye bhejo",en:"Send this to the AI"},
+  wiringHead:{hi:"Kaun kisse juda hai",en:"What connects to what"},
+  conceptsHead:{hi:"Is lesson ke concepts",en:"Concepts in this lesson"},
+  askHint:{hi:"Kisi bhi line pe click karke poochho: ye kya hai?",en:"Click any line to ask: what is this?"},
+  askMore:{hi:"Aur kuch poochho…",en:"Ask something else…"}, askSend:{hi:"Poochho",en:"Ask"},
+  askDemo:{hi:"(Mockup: asli tool mein ye sawaal teacher model ko jaayega.)",en:"(Mockup: in the real tool this goes to the teacher model.)"},
+  liveBeg:{hi:"AI abhi kaam kar raha hai. Neeche har kadam aate hi dikhega. Lesson turn khatam hone pe banega.",en:"The AI is working. Each step appears below as it happens. The lesson is written when the turn ends."},
+  progHead:{hi:"Mera seekhne ka record",en:"My learning record"},
+  progLede:{hi:"Har lesson ke concepts yahan jama hote hain. Quiz ke jawab se pata chalta hai kya pakka hua.",en:"Concepts from every lesson collect here. Your quiz answers decide what is solid."},
+  stSolid:{hi:"Pakka",en:"Solid"}, stWeak:{hi:"Revision chahiye",en:"Needs revision"}, stNew:{hi:"Abhi quiz nahi diya",en:"No quiz yet"},
+  revise:{hi:"Revision quiz shuru karo",en:"Start a revision quiz"},
+  exportHead:{hi:"Export karo",en:"Export"},
+  exportLede:{hi:"Session se tayyar text: PR mein daalo, commit karo, ya apne notes mein rakho.",en:"Ready-made text from this session: paste it into a PR, a commit, or your notes."},
+  exPR:{hi:"PR description",en:"PR description"}, exCommit:{hi:"Commit message",en:"Commit message"}, exNote:{hi:"Aaj ka note",en:"Today's note"},
+  ovHead:{hi:"Project ka khaaka",en:"Project map"},
+};
+const CLAIM_FIX = {3:{hi:"Is turn mein koi test nahi chala. `npm test` chalao. Jo test fail ho use theek karo, aur ResetPassword ke liye ek test likho jo check kare ki reset fail hone pe error dikhta hai.",en:"No test ran in this turn. Run `npm test`, fix whatever fails, and add a test for ResetPassword that checks an error is shown when the reset fails."}};
+const TEST_RESULT = {3:{raw:"✓ src/hooks/useNotes.test.js (3)\n✓ src/pages/LoginPage.test.jsx (2)\n✗ src/pages/SignupPage.test.jsx > shows 'Login failed' on bad password\n  Expected: \"Login failed\"\n  Received: \"Invalid credentials\"\n\nTests  1 failed | 5 passed (6)",
+  text:{hi:"6 mein se 1 test fail hua: SignupPage abhi bhi 'Login failed' text dhoondhta hai, jo login() ke badlaav ke baad aata hi nahi. Yahi Impact tab ka pehla risk tha.",en:"1 of 6 tests failed: SignupPage still looks for the text 'Login failed', which login() no longer returns. That was the first risk on the Impact tab."}}};
+const IMPACT_PROMPTS = {3:[
+  {hi:"SignupPage.jsx mein login() ka error handling naye AuthError ke hisaab se theek karo. 'Login failed' text pe check mat karo, error.status use karo.",en:"Update the login() error handling in SignupPage.jsx for the new AuthError. Don't check for the text 'Login failed'; use error.status."},
+  {hi:"ResetPassword.jsx ke onSubmit mein try/catch lagao. Reset fail ho to user ko saaf error message dikhao aur button phir se chalne do.",en:"Add try/catch to onSubmit in ResetPassword.jsx. If the reset fails, show the user a clear error message and re-enable the button."},
+  null]};
+const ASK = [
+  {m:"AuthError(res.status, await res.text())",a:{hi:"Jab login fail ho, ye ek naya error 'phenkta' hai. Usme do cheezein hain: status (jaise 401 = galat password) aur server ka message. Pehle sirf 'Login failed' likha aata tha.",en:"When login fails, this throws a new error carrying two things: the status (like 401 = wrong password) and the server's message. Before, it only said 'Login failed'."}},
+  {m:"throw new Error('Login failed')",a:{hi:"Ye purani line thi. Har galti pe ek hi message deti thi, isliye AI ne isko hata ke upar wala naya error lagaya.",en:"This was the old line. It gave the same message for every failure, so the AI replaced it with the new error above."}},
+  {m:"http.post('/auth/reset'",a:{hi:"Server ke /auth/reset address pe user ka email bhejta hai. 'await' ka matlab: jawab aane tak ruko.",en:"Sends the user's email to the server's /auth/reset address. 'await' means: wait for the reply."}},
+  {m:"return true;",a:{hi:"Sab theek raha to function 'true' lautata hai, matlab: request chali gayi.",en:"If all went well the function returns true, meaning the request went through."}},
+  {m:"<Link to=\"/reset\"",a:{hi:"Ek link jo /reset page kholta hai, bina poora page reload kiye.",en:"A link that opens the /reset page without reloading the whole page."}},
+  {m:"await requestPasswordReset(email);",a:{hi:"Yahan naya function chalta hai. Dhyan do: agar ye fail ho to is code mein koi try/catch nahi hai, isliye user ko kuch nahi dikhega.",en:"The new function runs here. Note: if it fails there is no try/catch, so the user sees nothing."}},
+  {m:"path=\"/reset\"",a:{hi:"App ko batata hai ki /reset address pe ResetPassword page dikhana hai.",en:"Tells the app to show the ResetPassword page at the /reset address."}},
+];
+S.step = 0; S.bView = null; S.stripOpen = false; S.claimsOpen = false; S.tests = {}; S.copied = null; S.ask = null; S.done = {}; S.exp = null;
+
+function copyText(txt, key){ try{ navigator.clipboard && navigator.clipboard.writeText(txt).catch(()=>{}); }catch(e){} S.copied = key; setTimeout(()=>{ if(S.copied===key){ S.copied=null; report(); } }, 1800); }
+
+/* ---------- report ---------- */
+function report(){
+  const H = $("#head"), N = $("#nav"), C = $("#content");
+  if(S.view==="overview"){ H.innerHTML = ""; N.innerHTML = ""; C.innerHTML = overview(); return; }
+  const x = turn();
+  H.innerHTML = `<h1 class="prompt">${esc(T(x.prompt))}</h1>
+   <div class="prompt-meta num">${x.live?`<span class="livetag">● ${T(UI.liveNow)}</span> · `:""}${x.events.length} ${T(UI.steps)} · ${x.files.length} ${T(UI.files)} · ${x.dur}${T(UI.seconds)}</div>
+   ${summaryCard(x)}${claimBanner(x)}`;
+  if(S.level==="dev"){
+    const tabs = ["live","logs","changes","wiring","impact","play","todo","seekho"];
+    N.innerHTML = `<div class="tabs" role="tablist">${tabs.map(k=>`<button role="tab" data-tab="${k}" aria-selected="${S.tab===k}"><svg class="i"><use href="#t-${k}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
+    C.innerHTML = `<div class="panel" role="tabpanel">${panel(x)}</div>`;
+    return;
+  }
+  /* beginner: guided lesson */
+  if(x.live || !x.lesson){
+    N.innerHTML = `<div class="stepper"><button class="stepchip on" aria-current="step"><span class="sn"><svg class="i"><use href="#t-live"/></svg></span><span>${T(UI.liveNow)}</span></button></div>`;
+    C.innerHTML = `<div class="panel"><p class="hint">${T(UI2.liveBeg)}</p>${live(x)}</div>`;
+    return;
+  }
+  const chips = UI2.steps.map((s,i)=>{ const st = S.bView? "" : (i===S.step?"on":(i<S.step||S.done[x.id]?"done":""));
+    return `<button class="stepchip ${st}" data-step="${i}" ${i===S.step&&!S.bView?'aria-current="step"':""}><span class="sn">${(i<S.step||S.done[x.id])&&i!==S.step?'<svg class="i"><use href="#i-ok"/></svg>':i+1}</span><span>${T(s)}</span></button>`; }).join("");
+  N.innerHTML = `<div class="stepper">${chips}${S.bView?`<button class="stepchip on" aria-current="step"><span class="sn"><svg class="i"><use href="#t-live"/></svg></span><span>${T(UI2.timelineChip)}</span></button>`:""}<span class="bar"><i style="width:${S.bView?0:((S.done[x.id]?6:S.step)/6*100)}%"></i></span></div>`;
+  if(S.bView==="live"){ C.innerHTML = `<div class="panel"><button class="ghost" id="backLesson">← ${T(UI2.backToLesson)}</button>${live(x)}</div>`; return; }
+  const body = [stepWhat, stepChanged, stepWatch, playground, todo, stepQuiz][S.step](x);
+  const last = S.step===5;
+  C.innerHTML = `<div class="panel">${body}
+    <div class="stepnav">${S.step>0?`<button class="ghost" data-go="${S.step-1}">← ${T(UI2.back)}</button>`:"<span></span>"}
+    ${last?`<button class="primary" id="finishBtn">${S.done[x.id]?'<svg class="i"><use href="#i-ok"/></svg> '+T(UI2.doneMsg):T(UI2.finish)}</button>`:`<button class="primary" data-go="${S.step+1}">${T(UI2.next)}: ${T(UI2.steps[S.step+1])} →</button>`}</div></div>`;
+}
+
+function claimBanner(x){
+  if(x.live) return `<div class="cbar pending"><svg class="i"><use href="#t-live"/></svg>${T(UI.pendingClaims)}</div>`;
+  const n = {ok:0,unk:0,bad:0}; x.claims.forEach(c=>n[c.s]++);
+  const bad = x.claims.find(c=>c.s==="bad");
+  const tr = S.tests[x.id];
+  const toggle = `<button class="ghost sm" id="claimsToggle">${S.claimsOpen?T(UI2.hideClaims):`${T(UI2.allClaims)} (${x.claims.length})`}</button>`;
+  const counts = `<span class="cpills">${n.ok?`<span class="stampx ok"><svg class="i"><use href="#i-ok"/></svg>${n.ok}</span>`:""}${n.unk?`<span class="stampx unk"><svg class="i"><use href="#i-unk"/></svg>${n.unk}</span>`:""}${n.bad?`<span class="stampx bad"><svg class="i"><use href="#i-bad"/></svg>${n.bad}</span>`:""}</span>`;
+  let html;
+  if(bad){
+    const fix = CLAIM_FIX[x.id];
+    html = `<div class="alert">
+      <div class="alert-top"><span class="alert-ic"><svg class="i"><use href="#i-bad"/></svg></span>
+        <p>${T(UI2.badLine)} <q>${esc(T(bad.q))}</q> ${T(UI2.badBut)} <span class="muted">${esc(T(bad.ev))}</span></p></div>
+      <div class="alert-actions">
+        ${tr==="done"?"":`<button class="primary sm" id="runTests" ${tr==="running"?"disabled":""}>${tr==="running"?`<span class="spin"></span>${T(UI2.running)}`:`<svg class="i"><use href="#i-run"/></svg>${T(UI2.runTests)}`}</button>`}
+        ${fix?`<button class="ghost sm" data-copy="claimfix">${S.copied==="claimfix"?`<svg class="i"><use href="#i-ok"/></svg>${T(UI2.copied)}`:`<svg class="i"><use href="#i-copy"/></svg>${T(UI2.copyFix)}`}</button>`:""}
+        ${counts}${toggle}</div>
+      ${tr==="done"?`<div class="testres"><b>npm test</b><p>${esc(T(TEST_RESULT[x.id].text))}</p><pre>${esc(TEST_RESULT[x.id].raw)}</pre></div>`:""}
+    </div>`;
+  } else {
+    html = `<div class="cbar ${n.unk?"mix":"good"}"><svg class="i"><use href="#i-ok"/></svg><span><b>${n.ok}/${x.claims.length}</b> ${n.unk?T(UI2.claimsMix):T(UI2.claimsOk)}</span>${counts}${toggle}</div>`;
+  }
+  return html + (S.claimsOpen ? findings(x) : "");
+}
+
+function findings(x){
+  const st = {ok:["ok",UI.stampOk,"i-ok"],unk:["unk",UI.stampUnk,"i-unk"],bad:["bad",UI.stampBad,"i-bad"]};
+  return `<section class="findings"><div class="claimrow">${x.claims.map((c,n)=>`
+    <div class="claim ${c.s}"><span class="stampx ${st[c.s][0]}"><svg class="i"><use href="#${st[c.s][2]}"/></svg>${T(st[c.s][1])}</span>
+      <div><span class="k">${String(n+1).padStart(2,"0")}</span><q>${esc(T(c.q))}</q></div>
+      <div class="ev">${esc(T(c.ev))}<br><a data-jump="${c.at}">${S.lang==="hi"?"Timeline pe dekho":"Show on timeline"} → ${fmt(c.at)}</a></div></div>`).join("")}</div></section>`;
+}
+
+/* beginner steps */
+function stepWhat(x){
+  const l = x.lesson;
+  return `<article class="lesson">
+    <section class="card hero"><h5>${T(UI.lWhat)}</h5><p class="big">${gl(T(l.big))}</p></section>
+    <section class="card"><h5>${T(UI.lWhy)}</h5><p>${gl(T(l.why))}</p></section>
+    ${l.how.length?`<section class="card"><h5>${T(UI.lHow)}</h5><div class="steps">${l.how.map(h=>`<p>${gl(L(h))}</p>`).join("")}</div></section>`:""}
+    <section class="card"><h5>${T(UI.lBA)}</h5><div class="ba"><div><b>${T(UI.before)}</b>${esc(T(l.before))}</div><div><b>${T(UI.after)}</b>${esc(T(l.after))}</div></div></section>
+    ${decisionCard(x)}${errorCard(x)}
+  </article>`;
+}
+function stepChanged(x){ return changes(x); }
+function stepWatch(x){
+  return `${impact(x)}${securityCard(x)}<h3 class="subhead">${T(UI2.wiringHead)}</h3>${wiring(x)}`;
+}
+function stepQuiz(x){
+  const l = x.lesson; const qs = S.quiz[x.id] || {};
+  const right = Object.entries(qs).filter(([i,v])=>l.quiz[i].a===v).length;
+  return `<article class="lesson">
+    <section class="card"><h5>${T(UI2.conceptsHead)}</h5><div class="concepts">${l.concepts.map(c=>`<details><summary><svg class="i"><use href="#i-chev"/></svg><code>${esc(c.n)}</code></summary><div>${esc(T(c.d))}</div></details>`).join("")}</div></section>
+    <section class="card quiz"><h5>${T(UI.quizHead)}</h5>
+     ${l.quiz.map((q,i)=>{ const ans = qs[i]; return `<div class="q"><p>${i+1}. ${esc(T(q.q))}</p><div class="opts">
+       ${q.o.map((o,j)=>{ const cls = ans==null?"":(j===q.a?"right":(j===ans?"wrong":"")); return `<button data-q="${i}" data-o="${j}" class="${cls}" ${ans!=null?"disabled":""}>${esc(T(o))}</button>`; }).join("")}
+       </div>${ans!=null?`<div class="qexp">${esc(T(q.e))}</div>`:""}</div>`; }).join("")}
+     <div class="score num">${T(UI.score)}: ${right} / ${l.quiz.length}</div>
+    </section>
+    <section class="card explain-back"><h5>${T(UI.ebHead)}</h5>
+      <textarea id="eb" placeholder="${esc(T(UI.ebPh))}"></textarea>
+      <button id="ebBtn" disabled>${T(UI.ebBtn)}</button><p class="qexp" id="ebOut" hidden>${T(UI.ebDone)}</p></section>
+  </article>`;
+}
+
+function panel(x){
+  switch(S.tab){
+    case "live": return live(x);
+    case "logs": return logs(x);
+    case "changes": return changes(x);
+    case "wiring": return wiring(x);
+    case "impact": return impact(x) + securityCard(x);
+    case "todo": return todo(x);
+    case "play": return playground(x);
+    case "seekho": return x.lesson ? stepWhat(x) + stepQuiz(x) : `<div class="empty">${T(UI.lessonPending)}</div>`;
+  }
+}
+
+function atEvent(x){ let a=null; x.events.forEach(e=>{ if(e.t<=S.cur) a=e; }); return a; }
+
+function live(x){
+  const a = atEvent(x);
+  if(!a) return `<div class="empty">${S.lang==="hi"?"Timeline pe handle aage le jao.":"Move the handle along the timeline."}</div>`;
+  const why = a.ch==="soch" ? (S.lang==="hi"?"AI apne aap se ye soch raha tha.":"The AI was thinking this to itself.")
+    : a.ch==="read" ? (S.lang==="hi"?`Badalne se pehle AI ne ye file padhi, taaki samjhe abhi code kaisa hai.`:`The AI read this before changing anything, to see how the code is now.`)
+    : a.ch==="edit" ? (S.lang==="hi"?`"Kya badla" mein iska code aur samjhaana hai.`:`"What changed" has this code and its explanation.`)
+    : a.ch==="run" ? (a.err ? T(a.err.simple) : (S.lang==="hi"?`Command ka poora output Logs mein hai.`:`The full output is in Logs.`))
+    : a.bad ? (S.lang==="hi"?"Is jawab ke ek daawe ka saboot record mein nahi mila. Upar laal box dekho.":"One claim in this answer has no evidence in the record. See the red box above.") : "";
+  return `
+   <div class="now ch-${a.ch} ${a.bad?"bad":""}"><span class="t">${fmt(a.t)}</span>
+     <div class="what">${icon(a.ch)} ${esc(T(a.text))}${a.target?` <code>${esc(a.target)}</code>`:""}</div>
+     <div class="why">${why}</div></div>
+   <ul class="feed">${x.events.map(e=>`
+     <li class="ev-${e.ch} ${e.t>S.cur?"future":""} ${e===a?"at":""}"><span class="t">${fmt(e.t)}</span><span class="ic">${icon(e.ch)}</span>
+     <span class="tx">${esc(T(e.text))}${e.target?` <code>${esc(e.target)}</code>`:""}${e.add!=null?` <span class="sub num">+${e.add} −${e.del}</span>`:""}</span></li>`).join("")}</ul>`;
+}
+
+function logs(x){
+  const tool = {prompt:"Prompt",soch:"Thinking",read:"Read",edit:"Edit",run:"Bash",msg:"Reply"};
+  return `<div class="logwrap"><table class="log"><thead><tr><th>${T(UI.colTime)}</th><th>${T(UI.colTool)}</th><th>${T(UI.colTarget)}</th><th>${T(UI.colResult)}</th></tr></thead><tbody>
+   ${x.events.map(e=>`<tr class="${e.t>S.cur?"future":""}"><td class="t">${fmt(e.t)}</td><td class="tool tool-${e.ch}"><span>${tool[e.ch]}${e.isNew&&e.ch==="edit"?" (Write)":""}</span></td>
+   <td>${e.target?`<code>${esc(e.target)}</code><br>`:""}<span class="muted">${esc(T(e.text))}</span></td>
+   <td>${e.result==="fail"?`<span class="res-x">exit 1</span>`:e.result==="ok"?`<span class="res-ok">exit 0</span>`:e.add!=null?`<span class="num">+${e.add} −${e.del}</span>`:"—"}
+   ${e.raw?`<details><summary><svg class="i"><use href="#i-chev"/></svg>${T(UI.rawOut)}</summary><pre>${esc(e.raw)}</pre></details>`:""}${e.err?errBox(e):""}</td></tr>`).join("")}
+   </tbody></table></div>`;
+}
+
+function askAnswer(txt){ const hit = ASK.find(a=>txt.includes(a.m)); return hit ? T(hit.a) : (S.lang==="hi"?"Ye line upar wale badlaav ka hissa hai. Asli tool mein teacher model is line ko tumhare level pe samjhayega.":"This line is part of the change above. In the real tool the teacher model explains it at your level."); }
+
+function changes(x){
+  if(!x.files.length) return `<div class="empty">${x.live?LIVE_FILES_NOTE():T(UI.nothingYet)}</div>`;
+  const fi = Math.min(S.file,x.files.length-1), f = x.files[fi];
+  return `<div class="files">${x.files.map((g,i)=>`<button data-file="${i}" aria-pressed="${g===f}">${esc(g.path.split("/").pop())}<span class="c num">+${g.add} −${g.del}</span></button>`).join("")}</div>
+   <p class="hint"><svg class="i"><use href="#i-ask"/></svg>${T(UI2.askHint)}</p>
+   <div class="diffwrap"><div class="diffhead"><code>${esc(f.path)}</code>${f.isNew?`<span class="newfile">${T(UI.newFile)}</span>`:""}<span class="muted num">+${f.add} −${f.del}</span></div>
+   ${f.hunks.map((h,hi)=>{ let n=h.start||1; return `<div class="hunk"><div class="code">${h.lines.map(([s,txt],li)=>{
+       const key = `${x.id}:${fi}:${hi}:${li}`; const ln = s==="-" ? "" : n++;
+       const row = s==="-" ? `<div class="del line" data-ask="${key}"><span class="ln"></span><span class="sg">−</span><span>${esc(txt)}</span><span class="hataya">${T(UI.hataya)}</span><span class="askbtn" aria-hidden="true">?</span></div>`
+            : `<div class="${s==="+"?"add":""} line" data-ask="${key}"><span class="ln num">${ln}</span><span class="sg">${s==="+"?"+":" "}</span><span>${esc(txt)||" "}</span><span class="askbtn" aria-hidden="true">?</span></div>`;
+       return row + (S.ask===key && txt.trim() ? `<div class="askans"><div class="askq"><svg class="i"><use href="#i-ask"/></svg><b>${S.lang==="hi"?"Ye line kya karti hai?":"What does this line do?"}</b></div><p>${esc(askAnswer(txt))}</p><div class="askmore"><input placeholder="${esc(T(UI2.askMore))}" aria-label="${esc(T(UI2.askMore))}"><button class="primary sm" id="askSend">${T(UI2.askSend)}</button></div><p class="qexp" id="askOut" hidden>${T(UI2.askDemo)}</p></div>` : "");
+     }).join("")}</div><div class="note"><b>${S.level==="beg"?(S.lang==="hi"?"Saral bhaasha mein":"In plain words"):"Developer note"}</b>${gl(L(h.note))}${x.lesson?`<button class="ghost sm pgbtn" data-pgedit="${fi}:${hi}"><svg class="i"><use href="#i-edit"/></svg>${T(UI4.editTry)}</button>`:""}</div></div>`;}).join("")}
+   </div>`;
+}
+function LIVE_FILES_NOTE(){ return S.lang==="hi"?"AI abhi kaam kar raha hai. Jaise hi koi file badlegi, yahan dikhegi.":"The AI is working. Files show up here as soon as they change."; }
+
+function wiring(x){
+  if(!x.wiring) return `<div class="empty">${S.lang==="hi"?"Naksha turn khatam hone pe banega.":"The map is drawn when the turn ends."}</div>`;
+  const W = x.wiring, nw=200, nh=50;
+  const pos = Object.fromEntries(W.nodes.map(n=>[n.id,n]));
+  const maxX = Math.max(...W.nodes.map(n=>n.x))+nw+30, maxY = Math.max(...W.nodes.map(n=>n.y))+nh+30;
+  const linked = id => !S.wireSel || id===S.wireSel || W.edges.some(([a,b])=>(a===S.wireSel&&b===id)||(b===S.wireSel&&a===id));
+  const edges = W.edges.map(([a,b,k])=>{ const A=pos[a],B=pos[b];
+    let x1=A.x+nw,y1=A.y+nh/2,x2=B.x,y2=B.y+nh/2;
+    if(B.x===A.x){ x1=A.x+nw/2; y1=A.y+nh; x2=B.x+nw/2; y2=B.y; }
+    const d = B.x===A.x ? `M${x1},${y1} L${x2},${y2-4}` : `M${x1},${y1} C${x1+50},${y1} ${x2-50},${y2} ${x2-4},${y2}`;
+    const dim = S.wireSel && !(a===S.wireSel||b===S.wireSel);
+    return `<path class="edge ${k||""} ${dim?"dim":""}" d="${d}" marker-end="url(#${k==="new"?"arN":"ar"})"/>`; }).join("");
+  const nodes = W.nodes.map(n=>`<g class="node ${n.st} ${linked(n.id)?"":"dim"}" data-node="${n.id}" tabindex="0" role="button" aria-label="${esc(n.label)}">
+     <rect x="${n.x}" y="${n.y}" width="${nw}" height="${nh}" rx="12"/>
+     <text x="${n.x+14}" y="${n.y+22}">${esc(n.label)}</text><text class="k" x="${n.x+14}" y="${n.y+39}">${esc(n.k)}</text></g>`).join("");
+  return `<div class="wire"><svg viewBox="0 0 ${maxX} ${maxY}" role="img" aria-label="Wiring">
+     <defs><marker id="ar" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="${document.documentElement.dataset.theme==="dark"?"#5A4C7E":"#C9B8AA"}"/></marker>
+     <marker id="arN" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto"><path d="M0,0 L8,4 L0,8z" fill="#5BAA7E"/></marker></defs>
+     ${edges}${nodes}</svg></div>
+   <div class="legend"><span><i></i>${T(UI.legendOld)}</span><span><i class="n"></i>${T(UI.legendNew)}</span><span><i class="r"></i>${T(UI.legendRisk)}</span></div>
+   <p class="wire-info">${S.wireSel?`<b><code>${esc(pos[S.wireSel].label)}</code></b> · ${esc(T(W.info[S.wireSel]))}`:`<span class="muted">${T(UI.wireHint)}</span>`}</p>`;
+}
+
+function impact(x){
+  if(!x.impact.length) return `<div class="empty">${S.lang==="hi"?"Impact turn khatam hone pe nikaala jaayega.":"Impact is worked out when the turn ends."}</div>`;
+  const rl = {1:UI.riskLow,2:UI.riskMid,3:UI.riskHigh}; const P = IMPACT_PROMPTS[x.id] || [];
+  return `<ul class="impact">${x.impact.map((i,k)=>`<li><div class="rlevel">${T(rl[i.r])}<span class="meter l${i.r}"><i></i><i></i><i></i></span></div>
+    <div><h5>${esc(T(i.title))}</h5><div class="where">${esc(i.where)}</div><div>${gl(T(i.why))}</div><div class="fix"><b>${T(UI.whatToDo)}</b> ${esc(T(i.fix))}</div>
+    ${P[k]?`<div class="fixprompt"><div class="fp-head"><svg class="i"><use href="#i-msg"/></svg>${T(UI2.fixPromptHead)}</div><p>${esc(T(P[k]))}</p>
+      <button class="primary sm" data-copy="imp${k}">${S.copied===`imp${k}`?`<svg class="i"><use href="#i-ok"/></svg>${T(UI2.copied)}`:`<svg class="i"><use href="#i-copy"/></svg>${T(UI2.copy)}`}</button></div>`:""}
+    </div></li>`).join("")}</ul>`;
+}
+
+/* ---------- overview: progress + export + map ---------- */
+function conceptStatus(){
+  const out = [];
+  TURNS.forEach(t=>{ if(!t.lesson) return; const qs = S.quiz[t.id]||{}; const answered = Object.keys(qs).length;
+    const right = Object.entries(qs).filter(([i,v])=>t.lesson.quiz[i].a===v).length;
+    const st = answered===0 ? "new" : (right===t.lesson.quiz.length && answered===t.lesson.quiz.length ? "solid" : "weak");
+    t.lesson.concepts.forEach(c=>out.push({n:c.n, d:c.d, st, turn:t.id})); });
+  if(S.pg && S.pg.ch.solved) out.push({n:"try/catch", st:"solid", turn:3});
+  return out;
+}
+function exportText(kind){
+  const done = TURNS.filter(t=>t.lesson);
+  if(kind==="commit") return S.lang==="hi"
+    ? "feat(auth): forgot password flow\n\n- LoginPage pe 'Forgot password?' link\n- naya /reset page (ResetPassword.jsx)\n- requestPasswordReset() POST /auth/reset\n- login() ab AuthError deta hai (status ke saath)\n\nNote: SignupPage ka test fail hai, AuthError ke hisaab se fix baaki."
+    : "feat(auth): forgot password flow\n\n- 'Forgot password?' link on LoginPage\n- new /reset page (ResetPassword.jsx)\n- requestPasswordReset() POST /auth/reset\n- login() now throws AuthError with a status\n\nNote: SignupPage test fails; needs updating for AuthError.";
+  if(kind==="pr") return `## ${S.lang==="hi"?"Kya badla":"What changed"}\n` + done.map(t=>`- ${T(t.lesson.big)}`).join("\n")
+    + `\n\n## ${S.lang==="hi"?"Dhyan dene wali baatein":"Things to check"}\n` + done.flatMap(t=>t.impact.filter(i=>i.r>=2).map(i=>`- ${T(i.title)} (${i.where})`)).join("\n")
+    + `\n\n## ${S.lang==="hi"?"Tests":"Tests"}\n- ${S.lang==="hi"?"Turn 03 mein tests nahi chale the; baad mein 1/6 fail (SignupPage).":"Turn 03 ran no tests; a later run had 1/6 failing (SignupPage)."}`;
+  return (S.lang==="hi"?"Aaj notes-app pe:\n":"Today on notes-app:\n") + done.map(t=>`• ${T(t.prompt)} → ${T(t.lesson.after)}`).join("\n")
+    + (S.lang==="hi"?"\n\nNaye concepts: ":"\n\nNew concepts: ") + done.flatMap(t=>t.lesson.concepts.map(c=>c.n)).join(", ");
+}
+function overview(){
+  const areas = [
+    {p:"src/pages/",n:4,t:2,d:{hi:"App ke screens: Login, Signup, Reset, Notes",en:"Screens: Login, Signup, Reset, Notes"}},
+    {p:"src/api/",n:2,t:1,d:{hi:"Server se baat karne wala code",en:"Code that talks to the server"}},
+    {p:"src/components/",n:5,t:2,d:{hi:"Chhote dobara use hone wale tukde",en:"Small reusable pieces"}},
+    {p:"src/hooks/",n:1,t:1,d:{hi:"Data aur logic (useNotes)",en:"Data and logic (useNotes)"}},
+    {p:"src/App.jsx",n:1,t:1,d:{hi:"Sab pages ko jodne wali file",en:"The file that wires all pages"}},
+    {p:"tests/",n:1,t:0,d:{hi:"Tests (aaj sirf ek baar chale, turn 02 mein)",en:"Tests (ran once today, in turn 02)"}},
+  ];
+  const files = new Set(TURNS.flatMap(t=>t.files.map(f=>f.path))).size;
+  const flags = TURNS.reduce((a,t)=>a+t.claims.filter(c=>c.s==="bad").length,0);
+  const time = TURNS.reduce((a,t)=>a+t.dur,0);
+  const cs = conceptStatus(); const stl = {solid:UI2.stSolid,weak:UI2.stWeak,new:UI2.stNew};
+  const weakTurn = (cs.find(c=>c.st==="weak")||cs.find(c=>c.st==="new")||{}).turn;
+  return `<h1 class="prompt">${T(UI2.progHead)}</h1><p class="lede muted">${T(UI2.progLede)}</p>
+   <div class="facts"><div><b>${TURNS.length}</b><span>${T(UI.fPrompts)}</span></div><div><b>${files}</b><span>${T(UI.fFiles)}</span></div><div><b>${flags}</b><span>${T(UI.fFlags)}</span></div><div><b>${cs.filter(c=>c.st==="solid").length}/${cs.length}</b><span>${S.lang==="hi"?"concepts pakke":"concepts solid"}</span></div></div>
+   <section class="card prog"><div class="clist">${cs.map(c=>`<div class="cchip ${c.st}"><code>${esc(c.n)}</code><span>${T(stl[c.st])}</span><small>${String(c.turn).padStart(2,"0")}</small></div>`).join("")}</div>
+     ${weakTurn?`<button class="primary" data-revise="${weakTurn}"><svg class="i"><use href="#t-seekho"/></svg>${T(UI2.revise)}</button>`:""}</section>
+   <h2 class="sechead">${T(UI2.exportHead)}</h2><p class="muted">${T(UI2.exportLede)}</p>
+   <div class="exbtns">${["pr","commit","note"].map(k=>`<button class="${S.exp===k?"primary":"ghost"}" data-exp="${k}">${T({pr:UI2.exPR,commit:UI2.exCommit,note:UI2.exNote}[k])}</button>`).join("")}</div>
+   ${S.exp?`<div class="exbox"><pre>${esc(exportText(S.exp))}</pre><button class="primary sm" data-copy="exp">${S.copied==="exp"?`<svg class="i"><use href="#i-ok"/></svg>${T(UI2.copied)}`:`<svg class="i"><use href="#i-copy"/></svg>${T(UI2.copy)}`}</button></div>`:""}
+   <h2 class="sechead">${T(UI2.ovHead)}</h2><p class="muted">${T(UI.ovLede)}</p>
+   <ul class="areas">${areas.map(a=>`<li><code>${a.p}</code><span>${esc(T(a.d))}</span><span class="bar" aria-label="${a.t}/${a.n}">${Array.from({length:a.n},(_,i)=>`<i class="${i<a.t?"t":""}"></i>`).join("")}</span></li>`).join("")}</ul>`;
+}
+
+/* =========================================================
+   ROUND 5: summary, decisions, errors, glossary, security, to-do, chat
+   ========================================================= */
+UI.tabs.todo = {hi:"Ab kya karo",en:"To-do"};
+S.todo = {}; S.chat = []; S.chatOpen = false;
+const UI3 = {
+  asked:{hi:"Tumne kya maanga tha",en:"What you asked for"},
+  hOk:{hi:"Rakh sakte ho",en:"Safe to keep"}, hCheck:{hi:"Pehle check karo",en:"Check first"}, hRisk:{hi:"Risky",en:"Risky"}, hWip:{hi:"AI kaam kar raha hai",en:"AI is working"},
+  decHead:{hi:"AI ne ye raasta kyun chuna",en:"Why the AI chose this way"}, chosen:{hi:"Chuna",en:"Chosen"}, notChosen:{hi:"Nahi chuna",en:"Not chosen"},
+  errHead:{hi:"Raaste mein ek error aaya (aur theek hua)",en:"An error on the way (and the fix)"},
+  errSimple:{hi:"Simple bhaasha mein",en:"In plain words"}, errFix:{hi:"AI ne kaise theek kiya",en:"How the AI fixed it"},
+  secHead:{hi:"Packages aur security",en:"Packages and security"},
+  noPkg:{hi:"Is turn mein koi naya package nahi aaya.",en:"No new package in this turn."},
+  pkgWhat:{hi:"Kya karta hai",en:"What it does"}, pkgSize:{hi:"Size",en:"Size"}, pkgLic:{hi:"Licence",en:"Licence"}, pkgDl:{hi:"Downloads",en:"Downloads"},
+  todoHead:{hi:"Ab kya karo",en:"What to do next"}, todoDone:{hi:"ho gaye",en:"done"},
+  manualHead:{hi:"Khud test karo",en:"Test it yourself"}, expect:{hi:"Kya dikhna chahiye",en:"What you should see"},
+  chatBtn:{hi:"Session se poochho",en:"Ask this session"}, chatHead:{hi:"Is session ke baare mein poochho",en:"Ask about this session"},
+  chatPh:{hi:"Jaise: login mein kya badla?",en:"e.g. what changed in login?"}, chatSend:{hi:"Bhejo",en:"Send"},
+  chatNote:{hi:"Mockup: jawab sample data se aate hain.",en:"Mockup: answers come from the sample data."},
+};
+const ASKS = {
+  1:[{s:"done",t:{hi:"Notes app ka basic layout",en:"Basic notes app layout"},ev:{hi:"Header aur NoteList bane (9s, 16s)",en:"Header and NoteList created (9s, 16s)"}}],
+  2:[{s:"done",t:{hi:"Notes localStorage mein save hon",en:"Save notes in localStorage"},ev:{hi:"useNotes hook (11s), 3 tests pass (25s)",en:"useNotes hook (11s), 3 tests pass (25s)"}}],
+  3:[{s:"done",t:{hi:"Login pe 'Forgot password' button",en:"'Forgot password' button on login"},ev:{hi:"LoginPage.jsx mein link (19s) aur naya /reset page (24s)",en:"Link in LoginPage.jsx (19s) and a new /reset page (24s)"}},
+     {s:"part",t:{hi:"Email pe reset link jaaye",en:"Reset link goes by email"},ev:{hi:"App server ko request bhejta hai. Email bhejna server ka kaam hai, jo is project mein nahi hai.",en:"The app sends the server a request. Sending email is the server's job, and it isn't in this project."}}],
+  4:[{s:"wip",t:{hi:"Dark mode ka toggle",en:"A dark mode toggle"},ev:{hi:"Abhi ban raha hai",en:"In progress"}}],
+};
+const DECISIONS = {
+  3:{q:{hi:"Reset kahan ho: naya page, ya login page pe hi popup?",en:"Where should reset live: a new page, or a popup on the login page?"},
+     opts:[{pick:true,t:{hi:"Naya /reset page",en:"A new /reset page"},why:{hi:"Link share ho sakta hai, browser ka back button chalta hai, aur App.jsx mein sirf ek route judta hai.",en:"The link can be shared, the back button works, and App.jsx only needs one route."}},
+           {pick:false,t:{hi:"Login page pe popup",en:"A popup on the login page"},why:{hi:"LoginPage.jsx aur bada ho jaata, aur is project mein koi popup component pehle se nahi hai.",en:"LoginPage.jsx would grow, and the project has no popup component yet."}}],
+     quote:{hi:"AI ki soch (00:09): “Reset ke liye auth.js mein naya function chahiye, aur ek naya page.”",en:"The AI's thinking (00:09): “Reset needs a new function in auth.js and a new page.”"}},
+  2:{q:{hi:"Save ka code kahan rakhein: App.jsx mein, ya alag hook mein?",en:"Where should the saving code go: in App.jsx, or in its own hook?"},
+     opts:[{pick:true,t:{hi:"Alag useNotes hook",en:"A separate useNotes hook"},why:{hi:"App chhota rehta hai aur hook ka alag test likh sakte hain.",en:"App stays small and the hook can be tested on its own."}},
+           {pick:false,t:{hi:"Seedha App.jsx mein",en:"Directly in App.jsx"},why:{hi:"Jaldi hota, par App mein sab kuch ek jagah bhar jaata.",en:"Quicker, but App would pile everything in one place."}}],
+     quote:{hi:"AI ki soch (00:06): “Notes ki state App mein hai, wahi save karna hoga.”",en:"The AI's thinking (00:06): “Notes state lives in App, so I save it there.”"}},
+};
+const SEC = {
+  2:{pkgs:[{n:"nanoid",v:"5.0.7",what:{hi:"Har note ke liye chhota unique ID banata hai",en:"Makes a short unique ID for each note"},size:"130 B",lic:"MIT",dl:{hi:"~6 crore / hafta",en:"~60M / week"},s:"ok"}],
+     checks:[{s:"ok",t:{hi:"localStorage mein koi password ya token nahi rakha",en:"No password or token stored in localStorage"}}]},
+  3:{pkgs:[], checks:[
+     {s:"ok",t:{hi:"Code mein koi password, API key ya token nahi mila",en:"No password, API key or token found in the code"}},
+     {s:"warn",t:{hi:"Server ka error message seedha user tak ja sakta hai",en:"The server's error text can reach the user as-is"},d:{hi:"login() mein `await res.text()` server ka poora jawab error mein daal deta hai. Agar server andar ki jaankari bheje (jaise database error), to wo user ki screen pe aa sakti hai.",en:"`await res.text()` in login() puts the server's whole reply into the error. If the server sends internal details (like a database error), they can show on the user's screen."},where:"src/api/auth.js:15"},
+     {s:"ok",t:{hi:"Koi eval, innerHTML ya khatarnak command nahi",en:"No eval, innerHTML or dangerous command"}}]},
+};
+const MANUAL = {
+  1:{steps:[{hi:"Terminal mein `npm run dev` chalao",en:"Run `npm run dev` in a terminal"},{hi:"Browser mein localhost:5173 kholo",en:"Open localhost:5173 in a browser"}],expect:{hi:"Upar header, aur neeche notes ki (abhi khaali) list.",en:"A header on top and an (empty) notes list below."}},
+  2:{steps:[{hi:"App kholo aur ek note likho",en:"Open the app and write a note"},{hi:"Page refresh karo (F5)",en:"Refresh the page (F5)"}],expect:{hi:"Refresh ke baad bhi note wahi rehna chahiye.",en:"The note should still be there after the refresh."}},
+  3:{steps:[{hi:"`npm run dev` chalao aur /login kholo",en:"Run `npm run dev` and open /login"},{hi:"'Forgot password?' pe click karo",en:"Click 'Forgot password?'"},{hi:"Apna email daal ke button dabao",en:"Enter your email and press the button"},{hi:"Ab galat ya khaali email ke saath try karo",en:"Now try with a wrong or empty email"}],
+     expect:{hi:"Sahi email pe 'link bhej diya' aana chahiye. Galat email pe error dikhna chahiye, par abhi kuch nahi dikhega. Yahi Impact ka doosra risk hai.",en:"A valid email should show 'link sent'. A wrong one should show an error, but right now nothing shows. That is the second risk on Impact."}},
+};
+const GLOSS = {
+  "route":{hi:"Ek address (jaise /reset) aur us pe khulne wala page.",en:"An address (like /reset) and the page it opens."},
+  "async":{hi:"Aisa function jo kisi cheez ka intezaar kar sakta hai, jaise server ka jawab.",en:"A function that can wait for something, like a server reply."},
+  "await":{hi:"Jawab aane tak yahin ruko, phir aage badho.",en:"Wait here for the reply, then carry on."},
+  "AuthError":{hi:"Login ke liye banaya gaya apna error type, jisme status code bhi hota hai.",en:"A custom error type for login that also carries a status code."},
+  "try/catch":{hi:"Error aaye to program girne ke bajaye use pakad ke sambhaal lo.",en:"Catch an error and handle it instead of crashing."},
+  "localStorage":{hi:"Browser ki chhoti tijori jisme data page band karne ke baad bhi rehta hai.",en:"The browser's small store that keeps data after the page closes."},
+  "component":{hi:"UI ka ek tukda jise baar-baar use kar sakte ho.",en:"A reusable piece of UI."},
+  "lint":{hi:"Ek tool jo code ki galtiyan aur gandagi pakadta hai, chalaye bina.",en:"A tool that spots mistakes and mess in code without running it."},
+  "server":{hi:"Doosra computer jo app ki requests sunta hai aur jawab deta hai.",en:"Another computer that receives the app's requests and replies."},
+  "status":{hi:"Server ke jawab ka number: 200 = theek, 401 = login galat, 500 = server mein gadbad.",en:"The reply's number: 200 = OK, 401 = bad login, 500 = server problem."},
+  "request":{hi:"App ka server ko bheja gaya sandesh.",en:"A message the app sends to the server."},
+  "hook":{hi:"React mein dobara use hone wala logic ka tukda (naam 'use' se shuru).",en:"A reusable piece of React logic (its name starts with 'use')."},
+};
+const GLOSS_RE = new RegExp("(^|[^A-Za-z/])(" + Object.keys(GLOSS).map(k=>k.replace("/","\\/")).join("|") + ")(?![A-Za-z])","gi");
+function gl(txt){
+  const s = esc(txt); const seen = new Set();
+  return s.replace(GLOSS_RE, (m,pre,w)=>{ const key = Object.keys(GLOSS).find(k=>k.toLowerCase()===w.toLowerCase()); if(seen.has(key)) return m; seen.add(key); return `${pre}<span class="term" tabindex="0" data-def="${esc(T(GLOSS[key]))}">${w}</span>`; });
+}
+
+function health(x){
+  if(x.live) return {k:"wip",why:[{hi:"Turn khatam hone pe faisla aayega",en:"The verdict comes when the turn ends"}]};
+  const why = []; let k = "ok";
+  const ranTests = x.events.some(e=>e.ch==="run" && /test/.test(e.target||""));
+  const bad = x.claims.filter(c=>c.s==="bad").length;
+  const risky = x.impact.filter(i=>i.r>=2).length;
+  const sec = ((SEC[x.id]||{}).checks||[]).filter(c=>c.s==="warn").length;
+  if(S.tests[x.id]==="done"){ why.push({hi:"Tests chale: 1 fail hua",en:"Tests ran: 1 failed"}); k="check"; }
+  else if(!ranTests && x.files.length){ why.push({hi:"Is turn mein koi test nahi chala",en:"No test ran in this turn"}); k="check"; }
+  else if(ranTests) why.push({hi:"Tests chale aur pass hue",en:"Tests ran and passed"});
+  if(bad){ why.push({hi:`${bad} daawa bina saboot`,en:`${bad} claim without evidence`}); k="check"; }
+  if(risky){ why.push({hi:`${risky} jagah risk (Beech ya zyada)`,en:`${risky} medium-or-higher risk${risky>1?"s":""}`}); k="check"; }
+  if(sec){ why.push({hi:`${sec} security baat dhyan dene layak`,en:`${sec} security note`}); }
+  if(x.impact.some(i=>i.r>=3)) k="risk";
+  if(k==="ok" && !why.length) why.push({hi:"Koi risk ya adhoora daawa nahi",en:"No risks or open claims"});
+  return {k,why};
+}
+function summaryCard(x){
+  const h = health(x); const asks = ASKS[x.id]||[];
+  const hl = {ok:UI3.hOk,check:UI3.hCheck,risk:UI3.hRisk,wip:UI3.hWip}[h.k];
+  const hic = {ok:"i-ok",check:"t-impact",risk:"i-bad",wip:"t-live"}[h.k];
+  const aic = {done:"i-ok",part:"i-half",no:"i-bad",wip:"t-live"};
+  return `<section class="summary">
+    <div class="health h-${h.k}"><div class="hv"><svg class="i"><use href="#${hic}"/></svg>${T(hl)}</div>
+      <ul>${h.why.map(w=>`<li>${esc(T(w))}</li>`).join("")}</ul></div>
+    <div class="asks"><h4>${T(UI3.asked)}</h4><ul>${asks.map(a=>`<li class="a-${a.s}"><span class="aic"><svg class="i"><use href="#${aic[a.s]}"/></svg></span><div><b>${esc(T(a.t))}</b><small>${esc(T(a.ev))}</small></div></li>`).join("")}</ul></div>
+  </section>`;
+}
+function decisionCard(x){
+  const d = DECISIONS[x.id]; if(!d) return "";
+  return `<section class="card decision"><h5>${T(UI3.decHead)}</h5><p class="dq">${esc(T(d.q))}</p>
+    <div class="dopts">${d.opts.map(o=>`<div class="dopt ${o.pick?"pick":""}"><span class="dtag">${o.pick?`<svg class="i"><use href="#i-ok"/></svg>${T(UI3.chosen)}`:T(UI3.notChosen)}</span><b>${esc(T(o.t))}</b><p>${gl(T(o.why))}</p></div>`).join("")}</div>
+    <p class="dquote">${esc(T(d.quote))}</p></section>`;
+}
+const md = s => String(s).split("`").map((p,i)=> i%2 ? `<code>${esc(p)}</code>` : gl(p)).join("");
+function errBox(e){ return `<div class="errbox"><b>${T(UI3.errSimple)}</b><p>${md(T(e.err.simple))}</p><b>${T(UI3.errFix)}</b><p>${md(T(e.err.fix))}</p></div>`; }
+function errorCard(x){
+  const errs = x.events.filter(e=>e.err); if(!errs.length) return "";
+  return errs.map(e=>`<section class="card errcard"><h5>${T(UI3.errHead)}</h5>
+    <div class="errline"><code>${esc(e.target)}</code><span class="res-x">exit 1</span><a data-jump="${e.t}">${S.lang==="hi"?"Timeline pe dekho":"Show on timeline"} → ${fmt(e.t)}</a></div>
+    <pre class="errraw">${esc(e.raw)}</pre>${errBox(e)}</section>`).join("");
+}
+function securityCard(x){
+  const s = SEC[x.id]; if(!s) return "";
+  return `<section class="card seccard"><h5><svg class="i"><use href="#i-shield"/></svg>${T(UI3.secHead)}</h5>
+    ${s.pkgs.length ? s.pkgs.map(p=>`<div class="pkg"><div class="pkgtop"><svg class="i"><use href="#i-pkg"/></svg><code>${esc(p.n)}@${esc(p.v)}</code><span class="stampx ok"><svg class="i"><use href="#i-ok"/></svg>${S.lang==="hi"?"Theek lagta hai":"Looks fine"}</span></div>
+      <dl><div><dt>${T(UI3.pkgWhat)}</dt><dd>${esc(T(p.what))}</dd></div><div><dt>${T(UI3.pkgSize)}</dt><dd>${p.size}</dd></div><div><dt>${T(UI3.pkgLic)}</dt><dd>${p.lic}</dd></div><div><dt>${T(UI3.pkgDl)}</dt><dd>${esc(T(p.dl))}</dd></div></dl></div>`).join("")
+      : `<p class="muted nopkg"><svg class="i"><use href="#i-pkg"/></svg>${T(UI3.noPkg)}</p>`}
+    <ul class="checks">${s.checks.map(c=>`<li class="c-${c.s}"><span class="cic"><svg class="i"><use href="#${c.s==="ok"?"i-ok":"t-impact"}"/></svg></span><div><b>${esc(T(c.t))}</b>${c.d?`<p>${md(T(c.d))}</p><code class="where">${esc(c.where)}</code>`:""}</div></li>`).join("")}</ul></section>`;
+}
+function todoItems(x){
+  const items = [];
+  const bad = x.claims.find(c=>c.s==="bad");
+  if(bad) items.push({k:"tests",t:{hi:"Tests chalao aur jo fail ho use theek karo",en:"Run the tests and fix what fails"},d:bad.ev,p:CLAIM_FIX[x.id]});
+  x.claims.filter(c=>c.s==="unk").forEach((c,i)=>items.push({k:"unk"+i,t:{hi:"Server pe check karo: "+T(c.q).replace(/^./,m=>m.toLowerCase()),en:"Check on the server: "+T(c.q)},d:c.ev}));
+  x.impact.forEach((im,i)=>{ if(im.r>=2) items.push({k:"imp"+i,t:im.title,d:im.fix,p:(IMPACT_PROMPTS[x.id]||[])[i]}); });
+  ((SEC[x.id]||{}).checks||[]).forEach((c,i)=>{ if(c.s==="warn") items.push({k:"sec"+i,t:c.t,d:c.d}); });
+  return items;
+}
+function todo(x){
+  if(x.live) return `<div class="empty">${S.lang==="hi"?"To-do list turn khatam hone pe banegi.":"The to-do list is made when the turn ends."}</div>`;
+  const items = todoItems(x); const m = MANUAL[x.id];
+  const done = items.filter(it=>S.todo[`${x.id}:${it.k}`]).length;
+  return `<section class="card todo"><div class="todohead"><h5>${T(UI3.todoHead)}</h5><span class="tcount num">${done}/${items.length} ${T(UI3.todoDone)}</span></div>
+    ${items.length?`<span class="tbar"><i style="width:${items.length?done/items.length*100:0}%"></i></span>`:""}
+    <ul class="tlist">${items.length?items.map(it=>{ const id=`${x.id}:${it.k}`, on=!!S.todo[id]; return `<li class="${on?"on":""}"><button class="tcheck" data-todo="${id}" aria-pressed="${on}" aria-label="${esc(T(it.t))}">${on?'<svg class="i"><use href="#i-ok"/></svg>':""}</button>
+      <div><b>${esc(T(it.t))}</b>${it.d?`<p>${md(T(it.d))}</p>`:""}${it.p&&!on?`<button class="ghost sm" data-copy="todo:${it.k}">${S.copied===`todo:${it.k}`?`<svg class="i"><use href="#i-ok"/></svg>${T(UI2.copied)}`:`<svg class="i"><use href="#i-copy"/></svg>${T(UI2.copyFix)}`}</button>`:""}</div></li>`; }).join("")
+      :`<li class="none">${S.lang==="hi"?"Kuch baaki nahi. Bas neeche wala test khud karke dekh lo.":"Nothing open. Just try the test below yourself."}</li>`}</ul></section>
+    ${m?`<section class="card manual"><h5>${T(UI3.manualHead)}</h5><ol>${m.steps.map(s=>`<li>${md(T(s))}</li>`).join("")}</ol>
+      <div class="expect"><b>${T(UI3.expect)}</b><p>${gl(T(m.expect))}</p></div></section>`:""}`;
+}
+
+/* chat */
+const CHAT_QA = [
+  {q:{hi:"SignupPage kyun toota?",en:"Why did SignupPage break?"},m:/signup|toot|break/i,a:{hi:"Turn 03 mein login() ka error badla: pehle 'Login failed' text aata tha, ab AuthError aata hai jisme server ka message hai. SignupPage abhi bhi 'Login failed' dhoondhta hai, isliye uska test fail hua. Fix prompt 'Ab kya karo' mein hai.",en:"Turn 03 changed login()'s error: it used to say 'Login failed', now it throws AuthError with the server's text. SignupPage still looks for 'Login failed', so its test fails. The fix prompt is under 'To-do'."}},
+  {q:{hi:"Aaj kitni files badli?",en:"How many files changed today?"},m:/file|kitni|how many/i,a:{hi:"Aaj 4 prompts mein 6 files badli: NoteList.jsx, useNotes.js, auth.js, LoginPage.jsx, ResetPassword.jsx aur App.jsx. Sabse zyada (34 lines) ResetPassword.jsx mein aayi.",en:"6 files changed across 4 prompts today: NoteList.jsx, useNotes.js, auth.js, LoginPage.jsx, ResetPassword.jsx and App.jsx. ResetPassword.jsx got the most (34 lines)."}},
+  {q:{hi:"Turn 02 mein kya hua tha?",en:"What happened in turn 02?"},m:/02|turn 2|localstorage|save/i,a:{hi:"Turn 02 mein notes ko localStorage mein save kiya gaya, ek naye useNotes hook se. Ab refresh karne pe notes gaayab nahi hote. Us turn mein 3 tests chale aur teeno pass hue.",en:"Turn 02 saved notes in localStorage through a new useNotes hook, so a refresh no longer wipes them. 3 tests ran and all passed."}},
+  {q:{hi:"Kya ye code safe hai?",en:"Is this code safe?"},m:/safe|secur|password|key/i,a:{hi:"Koi password ya key code mein nahi mili. Ek baat dhyan dene layak hai: login() server ka error text seedha user tak bhej sakta hai (auth.js:15). Details 'Dhyan do' step ke security card mein hain.",en:"No password or key in the code. One thing to watch: login() can pass the server's error text straight to the user (auth.js:15). Details are in the security card under 'Watch out'."}},
+];
+function chatRender(){
+  const p = $("#chatPanel"); if(!p) return;
+  $("#chatFab").hidden = S.chatOpen; p.hidden = !S.chatOpen;
+  $("#chatFab span").textContent = T(UI3.chatBtn);
+  p.innerHTML = `<div class="chathead"><b>${T(UI3.chatHead)}</b><button class="iconbtn" id="chatClose" aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></div>
+    <div class="chatlog" id="chatLog">${S.chat.length?S.chat.map(m=>`<div class="msg ${m.who}">${esc(m.t)}</div>`).join(""):`<p class="muted">${T(UI3.chatNote)}</p>`}</div>
+    <div class="chips">${CHAT_QA.map((c,i)=>`<button class="chip" data-chatq="${i}">${esc(T(c.q))}</button>`).join("")}</div>
+    <form class="chatform" id="chatForm"><input id="chatIn" placeholder="${esc(T(UI3.chatPh))}" aria-label="${esc(T(UI3.chatPh))}"><button class="primary sm" type="submit">${T(UI3.chatSend)}</button></form>`;
+  const log = $("#chatLog"); if(log) log.scrollTop = log.scrollHeight;
+}
+function chatAsk(q){
+  S.chat.push({who:"me",t:q});
+  const hit = CHAT_QA.find(c=>c.m.test(q));
+  S.chat.push({who:"ai",t: hit ? T(hit.a) : (S.lang==="hi"?"Mockup mein iska tayyar jawab nahi hai. Asli tool mein teacher poore session ke record se jawab dega.":"The mockup has no ready answer for that. In the real tool the teacher answers from the whole session record.")});
+  chatRender();
+}
+document.addEventListener("submit",e=>{ if(e.target.id==="chatForm"){ e.preventDefault(); const v=$("#chatIn").value.trim(); if(v) chatAsk(v); } });
+
+/* =========================================================
+   ROUND 6: Playground (sandbox edit, what-if, challenge, preview)
+   ========================================================= */
+UI.tabs.play = {hi:"Playground",en:"Playground"};
+const UI4 = {
+  head:{hi:"Khud try karo",en:"Try it yourself"},
+  safe:{hi:"Sandbox: ye ek alag copy hai, tumhara asli code nahi badlega.",en:"Sandbox: this is a separate copy; your real code does not change."},
+  editTry:{hi:"Edit karke dekho",en:"Edit and see"},
+  aHead:{hi:"1. Badal ke dekho",en:"1. Change it and see"},
+  aLede:{hi:"Code ka koi bhi hissa badlo, phir sandbox mein chalao. Teacher batayega kya hoga.",en:"Change any part of the code, then run it in the sandbox. The teacher tells you what happens."},
+  pick:{hi:"Kaunsa code",en:"Which code"},
+  run:{hi:"Sandbox mein chalao",en:"Run in sandbox"}, running:{hi:"Sandbox mein lint aur tests chal rahe hain…",en:"Running lint and tests in the sandbox…"},
+  reset:{hi:"Wapas AI wala code",en:"Back to the AI's code"},
+  raay:{hi:"Teacher ki raay",en:"Teacher's take"}, lint:{hi:"Lint",en:"Lint"}, tests:{hi:"Tests",en:"Tests"}, imp:{hi:"Isse kya affect hoga",en:"What this affects"},
+  cmp:{hi:"AI ka version vs tumhara",en:"The AI's version vs yours"}, aiv:{hi:"AI ka",en:"AI's"}, mine:{hi:"Tumhara",en:"Yours"},
+  apply:{hi:"Mere project mein lagao",en:"Apply to my project"}, toPrompt:{hi:"AI ko prompt bana ke do",en:"Turn into a prompt for the AI"}, discard:{hi:"Sirf seekhne ke liye tha",en:"Just for learning"},
+  applyConfirm:{hi:"Ye badlaav tumhare asli project mein jaayega. Pakka?",en:"This change goes into your real project. Sure?"}, yes:{hi:"Haan, lagao",en:"Yes, apply"}, no:{hi:"Ruko",en:"Wait"},
+  applied:{hi:"Mockup: asli tool yahan patch lagata aur git mein dikhta. Abhi kuch nahi badla.",en:"Mockup: the real tool applies the patch here and it shows in git. Nothing changed now."},
+  discarded:{hi:"Sandbox saaf kar diya. Asli code waisa hi hai.",en:"Sandbox cleared. Your real code is untouched."},
+  bHead:{hi:"2. Kya hoga agar…?",en:"2. What happens if…?"},
+  bLede:{hi:"Pehle andaaza lagao, phir sandbox mein asli nateeja dekho.",en:"Guess first, then see the real result in the sandbox."},
+  check:{hi:"Sandbox mein chala ke dekho",en:"Run it in the sandbox"}, right:{hi:"Sahi andaaza!",en:"Good guess!"}, wrong:{hi:"Andaaza galat tha, par ab pata chal gaya",en:"Not quite, but now you know"},
+  cHead:{hi:"3. Ab tum karo",en:"3. Your turn"},
+  cCheck:{hi:"Check karo",en:"Check"}, cHint:{hi:"Hint lo",en:"Get a hint"}, cSol:{hi:"Solution dikhao",en:"Show solution"}, cPass:{hi:"Shabaash! Saare tests pass. 'try/catch' ab tumhare record mein Pakka hai.",en:"Nice! All tests pass. 'try/catch' is now Solid in your record."},
+  dHead:{hi:"4. Pehle vs ab, screen pe",en:"4. Before vs after, on screen"},
+  dLede:{hi:"Sandbox mein app chal rahi hai. Neeche wale page pe click karke dekho.",en:"The app runs in the sandbox. Click around the page below."},
+  vBefore:{hi:"AI se pehle",en:"Before the AI"}, vAfter:{hi:"AI ke baad",en:"After the AI"}, vMine:{hi:"Tumhare edit ke baad",en:"After your edit"},
+};
+S.pg = {hunk:null, code:{}, run:null, running:false, act:null, pred:{}, predRun:{}, ch:{code:null, hints:0, res:null, solved:false, showSol:false}, view:"after", screen:"login", pvState:null};
+
+function pgHunks(x){ const out=[]; x.files.forEach((f,fi)=>f.hunks.forEach((h,hi)=>out.push({key:`${fi}:${hi}`, label:`${f.path.split("/").pop()} · ${S.lang==="hi"?"hissa":"part"} ${hi+1}`, orig:h.lines.filter(([s])=>s!=="-").map(([,t])=>t).join("\n").replace(/^\n+/,"")}))); return out; }
+function lineDiff(a,b){
+  const A=a.split("\n"), B=b.split("\n"), n=A.length, m=B.length, L=Array.from({length:n+1},()=>Array(m+1).fill(0));
+  for(let i=n-1;i>=0;i--) for(let j=m-1;j>=0;j--) L[i][j] = A[i]===B[j] ? L[i+1][j+1]+1 : Math.max(L[i+1][j],L[i][j+1]);
+  const out=[]; let i=0,j=0;
+  while(i<n&&j<m){ if(A[i]===B[j]){ out.push([" ",A[i]]); i++; j++; } else if(L[i+1][j]>=L[i][j+1]){ out.push(["-",A[i++]]); } else { out.push(["+",B[j++]]); } }
+  while(i<n) out.push(["-",A[i++]]); while(j<m) out.push(["+",B[j++]]); return out;
+}
+function pgAnalyze(orig, ed){
+  const cnt = (s,ch)=>s.split(ch).length-1;
+  const H = (hi,en)=>({hi,en});
+  if(ed.trim()===orig.trim()) return {v:"same",raay:H("Tumne abhi kuch nahi badla. Koi line badlo, jaise `await` hata do ya message ka text.","You haven't changed anything yet. Try removing an `await` or editing the message text."),lint:[true,"✔ 0 problems"],tests:[true,"Tests  6 passed (6)"]};
+  if(cnt(ed,"{")!==cnt(ed,"}")||cnt(ed,"(")!==cnt(ed,")")) return {v:"bad",raay:H("Brackets ka jodaa toot gaya: koi `{` ya `(` khula hai jo band nahi hua. Isliye code chalega hi nahi. Har kholne wale bracket ka band hona zaroori hai.","The brackets don't pair up: a `{` or `(` was opened and never closed, so the code won't even run."),lint:[false,"error  Parsing error: Unexpected token\n✖ 1 problem (1 error)"],tests:[false,"Test suite failed to run: SyntaxError"],imp:H("Poori file load nahi hogi, isliye login aur reset dono band.","The whole file fails to load, so login and reset both stop working.")};
+  if(/await\s+http\.post/.test(orig) && !/await\s+http\.post/.test(ed)) return {v:"bad",raay:H("`await` hatane se `res` ab server ka jawab nahi, balki ek Promise (aane wala jawab) hai. `res.ok` hamesha undefined hoga, isliye `!res.ok` hamesha sach, aur har baar error phenka jaayega, chahe server ne theek jawab diya ho.","Without `await`, `res` is a Promise, not the reply. `res.ok` is always undefined, so `!res.ok` is always true and an error is thrown every time, even when the server said OK."),lint:[true,"✔ 0 problems"],tests:[false,"✗ requestPasswordReset > returns true when server says ok\n  Expected: true\n  Received: AuthError\nTests  1 failed | 5 passed (6)"],imp:H("Reset kabhi kaam nahi karega. ResetPassword.jsx aur uska test dono affect.","Reset never works. ResetPassword.jsx and its test are affected.")};
+  if(/try\s*\{/.test(ed) && /catch/.test(ed) && !/try\s*\{/.test(orig)) return {v:"good",raay:H("Badhiya! `try/catch` lagane se reset fail hone pe error pakda jaata hai aur user ko message dikh sakta hai. Yahi Impact ka doosra risk tha.","Nice! With `try/catch` a failed reset is caught and the user can see a message. That was the second risk on Impact."),lint:[true,"✔ 0 problems"],tests:[true,"✓ ResetPassword > shows an error when reset fails\nTests  6 passed (6)"],imp:H("Sirf ResetPassword.jsx. Baaki sab waisa hi.","Only ResetPassword.jsx. Nothing else changes.")};
+  if(/return true;/.test(orig) && !/return true;/.test(ed)) return {v:"warn",raay:H("Ab function kuch return nahi karta (undefined). Abhi ResetPassword iska jawab use nahi karta, isliye kuch nahi tootega, par aage koi `if (await requestPasswordReset())` likhega to wo kabhi sach nahi hoga.","The function now returns undefined. ResetPassword doesn't use the value yet, so nothing breaks today, but a future `if (await requestPasswordReset())` would never be true."),lint:[true,"✔ 0 problems"],tests:[false,"✗ requestPasswordReset > returns true when server says ok\n  Expected: true  Received: undefined\nTests  1 failed | 5 passed (6)"],imp:H("Abhi koi screen nahi badli, par ek test fail.","No screen changes yet, but one test fails.")};
+  if(/Reset link nahi bhej paaye/.test(orig) && !/Reset link nahi bhej paaye/.test(ed)) return {v:"good",raay:H("Sirf error ka text badla. Kaam waisa hi hai, bas user ko naya message dikhega. Aise chhote badlaav safe hote hain.","Only the error text changed. Behaviour is the same; the user just sees your new message. Small changes like this are safe."),lint:[true,"✔ 0 problems"],tests:[true,"Tests  6 passed (6)"],imp:H("Sirf woh message jo reset fail hone pe dikhta hai.","Only the message shown when a reset fails.")};
+  return {v:"good",raay:H("Sandbox mein code chal gaya aur kuch nahi toota. Asli tool mein teacher tumhare exact badlaav ko line-by-line samjhayega.","The code ran in the sandbox and nothing broke. In the real tool the teacher explains your exact change line by line."),lint:[true,"✔ 0 problems"],tests:[true,"Tests  6 passed (6)"]};
+}
+const PRED = {3:[
+  {q:{hi:"Agar `requestPasswordReset` mein `await` hata do, to sahi email daalne pe kya hoga?",en:"If you remove `await` in `requestPasswordReset`, what happens with a valid email?"},
+   o:[{hi:"'Link bhej diya' aayega, sab theek",en:"'Link sent' shows, all fine"},{hi:"Har baar error phenkega, chahe server ne OK bola ho",en:"It throws an error every time, even when the server said OK"},{hi:"App crash ho jaayegi",en:"The app crashes"}],a:1,
+   out:"✗ requestPasswordReset > returns true when server says ok\n  Received: AuthError (status undefined)\nTests  1 failed | 5 passed (6)",
+   e:{hi:"Bina `await` ke `res` ek Promise hai. Promise pe `.ok` nahi hota, isliye condition hamesha error wali taraf jaati hai.",en:"Without `await`, `res` is a Promise. A Promise has no `.ok`, so the check always goes the error way."}},
+  {q:{hi:"Agar App.jsx se `/reset` wala route hata do, to 'Forgot password?' dabane pe kya hoga?",en:"If you remove the `/reset` route from App.jsx, what happens when you click 'Forgot password?'"},
+   o:[{hi:"Reset page phir bhi khulega",en:"The reset page still opens"},{hi:"Khaali page ya 'Not found' aayega",en:"A blank or 'Not found' page"},{hi:"Login page reload hoga",en:"The login page reloads"}],a:1,
+   out:"GET /reset → no route matched\n<Routes> rendered nothing (blank page)",
+   e:{hi:"Link `/reset` pe le jaata hai, par App ko pata hi nahi ki wahan kya dikhana hai. Route hi address ko page se jodta hai.",en:"The link goes to `/reset`, but the app no longer knows what to show there. The route is what ties an address to a page."}},
+]};
+const CHALLENGE = {3:{
+  task:{hi:"ResetPassword.jsx ke `onSubmit` mein `try/catch` lagao. Reset fail ho to `setError(...)` se user ko message dikhao.",en:"Add `try/catch` to `onSubmit` in ResetPassword.jsx. If the reset fails, show the user a message with `setError(...)`."},
+  starter:"async function onSubmit(e) {\n  e.preventDefault();\n  await requestPasswordReset(email);\n  setSent(true);\n}",
+  solution:"async function onSubmit(e) {\n  e.preventDefault();\n  setError(null);\n  try {\n    await requestPasswordReset(email);\n    setSent(true);\n  } catch (err) {\n    setError('Reset link nahi bhej paaye. Email check karo.');\n  }\n}",
+  hints:[{hi:"Jo line fail ho sakti hai (`await requestPasswordReset`) usse `try { ... }` ke andar rakho.",en:"Put the line that can fail (`await requestPasswordReset`) inside `try { ... }`."},
+         {hi:"`try` ke baad `catch (err) { ... }` likho. Error aane pe wahi chalega.",en:"After `try`, write `catch (err) { ... }`. That runs when an error happens."},
+         {hi:"`catch` ke andar `setError('...')` likho taaki screen pe message aaye.",en:"Inside `catch`, call `setError('...')` so a message appears on screen."}]}};
+function chCheck(code){
+  const H=(hi,en)=>({hi,en});
+  if(!/try\s*\{/.test(code)) return {ok:false,m:H("Abhi koi `try` block nahi hai. Test 'shows an error when reset fails' fail hua: reset fail hone pe screen pe kuch nahi aaya.","There's no `try` block yet. The test 'shows an error when reset fails' failed: nothing appeared when the reset failed."),out:"✗ ResetPassword > shows an error when reset fails\n  Unable to find text: /nahi bhej paaye/"};
+  if(!/catch\s*\(/.test(code)) return {ok:false,m:H("`try` hai par `catch` nahi. Bina `catch` ke `try` adhoora hai, isliye code chalega hi nahi.","There's a `try` but no `catch`. A `try` without `catch` is incomplete, so the code won't run."),out:"error  Parsing error: Missing catch or finally after try"};
+  if(!/setError\s*\(/.test(code)) return {ok:false,m:H("Error pakad liya, shabaash! Par user ko abhi bhi kuch nahi dikhta. `catch` ke andar `setError(...)` lagao.","You catch the error, good! But the user still sees nothing. Call `setError(...)` inside `catch`."),out:"✗ ResetPassword > shows an error when reset fails\n  Unable to find text: /nahi bhej paaye/"};
+  return {ok:true,out:"✓ ResetPassword > sends the reset request\n✓ ResetPassword > shows 'link sent' on success\n✓ ResetPassword > shows an error when reset fails\nTests  3 passed (3)"};
+}
+
+function pgRun(){
+  const x = turn(); const hs = pgHunks(x); const h = hs.find(k=>k.key===S.pg.hunk)||hs[0]; if(!h) return;
+  const ed = S.pg.code[h.key] ?? h.orig;
+  S.pg.running = true; S.pg.run = null; S.pg.act = null; report();
+  setTimeout(()=>{ S.pg.running=false; S.pg.run = {key:h.key, ...pgAnalyze(h.orig, ed), diff:lineDiff(h.orig, ed)}; report(); }, 1300);
+}
+function pgCodeBlock(lines){ return lines.map(([s,t])=>`<div class="${s==="+"?"add":s==="-"?"del":""}"><span class="sg">${s==="+"?"+":s==="-"?"−":" "}</span><span>${esc(t)||" "}</span></div>`).join(""); }
+const mdc = s => String(s).split("`").map((p,i)=> i%2 ? `<code>${esc(p)}</code>` : esc(p)).join("");
+
+function playground(x){
+  if(x.live || !x.lesson) return `<div class="empty">${S.lang==="hi"?"Playground turn khatam hone pe khulega.":"The playground opens when the turn ends."}</div>`;
+  const hs = pgHunks(x); if(!S.pg.hunk || !hs.find(k=>k.key===S.pg.hunk)) S.pg.hunk = (hs.find(k=>/return true/.test(k.orig))||hs[0]).key;
+  const h = hs.find(k=>k.key===S.pg.hunk); const ed = S.pg.code[h.key] ?? h.orig; const r = S.pg.run && S.pg.run.key===h.key ? S.pg.run : null;
+  const vk = {good:["ok","i-ok"],warn:["unk","t-impact"],bad:["bad","i-bad"],same:["chipc","i-unk"]};
+  /* A */
+  let A = `<section class="card pg"><h5>${T(UI4.aHead)}</h5><p class="muted">${T(UI4.aLede)}</p>
+    <div class="pgbar"><label>${T(UI4.pick)} <select id="pgPick">${hs.map(k=>`<option value="${k.key}" ${k.key===h.key?"selected":""}>${esc(k.label)}</option>`).join("")}</select></label>
+      <span class="sandbox"><svg class="i"><use href="#i-shield"/></svg>${T(UI4.safe)}</span></div>
+    <textarea class="editor" id="pgCode" spellcheck="false" aria-label="Code">${esc(ed)}</textarea>
+    <div class="pgactions"><button class="primary sm" id="pgRun" ${S.pg.running?"disabled":""}>${S.pg.running?`<span class="spin"></span>${T(UI4.running)}`:`<svg class="i"><use href="#i-run"/></svg>${T(UI4.run)}`}</button>
+      <button class="ghost sm" id="pgReset">${T(UI4.reset)}</button></div>`;
+  if(r){
+    A += `<div class="pgres v-${r.v}"><div class="raay"><span class="stampx ${vk[r.v][0]}"><svg class="i"><use href="#${vk[r.v][1]}"/></svg>${T(UI4.raay)}</span><p>${mdc(T(r.raay))}</p></div>
+      <div class="pgchecks"><div class="${r.lint[0]?"okc":"badc"}"><b>${T(UI4.lint)}</b><pre>${esc(r.lint[1])}</pre></div><div class="${r.tests[0]?"okc":"badc"}"><b>${T(UI4.tests)}</b><pre>${esc(r.tests[1])}</pre></div></div>
+      ${r.imp?`<p class="pgimp"><b>${T(UI4.imp)}:</b> ${esc(T(r.imp))}</p>`:""}
+      ${r.v!=="same"?`<div class="cmp"><b>${T(UI4.cmp)}</b><div class="cmpgrid"><div><small>${T(UI4.aiv)}</small><div class="code mini">${pgCodeBlock(r.diff.filter(([s])=>s!=="+"))}</div></div><div><small>${T(UI4.mine)}</small><div class="code mini">${pgCodeBlock(r.diff.filter(([s])=>s!=="-"))}</div></div></div></div>
+      <div class="pgactions">${S.pg.act==="confirm"?`<span class="confirm">${T(UI4.applyConfirm)}</span><button class="primary sm" id="pgApplyYes">${T(UI4.yes)}</button><button class="ghost sm" id="pgApplyNo">${T(UI4.no)}</button>`
+        :`<button class="primary sm" id="pgApply"><svg class="i"><use href="#i-ok"/></svg>${T(UI4.apply)}</button><button class="ghost sm" data-copy="pgprompt">${S.copied==="pgprompt"?`<svg class="i"><use href="#i-ok"/></svg>${T(UI2.copied)}`:`<svg class="i"><use href="#i-copy"/></svg>${T(UI4.toPrompt)}`}</button><button class="ghost sm" id="pgDiscard">${T(UI4.discard)}</button>`}</div>
+      ${S.pg.act==="applied"?`<p class="note2">${T(UI4.applied)}</p>`:S.pg.act==="discarded"?`<p class="note2">${T(UI4.discarded)}</p>`:""}`:""}
+    </div>`;
+  }
+  A += `</section>`;
+  /* B */
+  const P = PRED[x.id]||[];
+  const B = P.length?`<section class="card pg"><h5>${T(UI4.bHead)}</h5><p class="muted">${T(UI4.bLede)}</p>${P.map((p,i)=>{ const pick=S.pg.pred[i], ran=S.pg.predRun[i];
+    return `<div class="pred"><p class="pq">${mdc(T(p.q))}</p><div class="opts">${p.o.map((o,j)=>{ const cls = ran ? (j===p.a?"right":(j===pick?"wrong":"")) : (j===pick?"picked":""); return `<button data-pred="${i}:${j}" class="${cls}" ${ran?"disabled":""}>${esc(T(o))}</button>`; }).join("")}</div>
+      ${!ran?`<button class="primary sm" data-predrun="${i}" ${pick==null?"disabled":""}><svg class="i"><use href="#i-run"/></svg>${T(UI4.check)}</button>`
+        :`<div class="predres ${pick===p.a?"good":"meh"}"><b>${pick===p.a?T(UI4.right):T(UI4.wrong)}</b><pre>${esc(p.out)}</pre><p>${mdc(T(p.e))}</p></div>`}</div>`; }).join("")}</section>`:"";
+  /* C */
+  const C0 = CHALLENGE[x.id]; let C = "";
+  if(C0){ const ch=S.pg.ch; if(ch.code==null) ch.code=C0.starter;
+    C = `<section class="card pg challenge"><h5>${T(UI4.cHead)}</h5><p class="task">${mdc(T(C0.task))}</p>
+      <textarea class="editor" id="chCode" spellcheck="false" aria-label="Challenge code">${esc(ch.showSol?C0.solution:ch.code)}</textarea>
+      <div class="pgactions"><button class="primary sm" id="chCheck"><svg class="i"><use href="#i-ok"/></svg>${T(UI4.cCheck)}</button>
+        ${ch.hints<C0.hints.length?`<button class="ghost sm" id="chHint"><svg class="i"><use href="#i-unk"/></svg>${T(UI4.cHint)} (${ch.hints}/${C0.hints.length})</button>`:`<button class="ghost sm" id="chSol">${T(UI4.cSol)}</button>`}</div>
+      ${ch.hints?`<ol class="hints">${C0.hints.slice(0,ch.hints).map(hh=>`<li>${mdc(T(hh))}</li>`).join("")}</ol>`:""}
+      ${ch.res?`<div class="predres ${ch.res.ok?"good":"meh"}"><b>${ch.res.ok?T(UI4.cPass):(S.lang==="hi"?"Abhi nahi":"Not yet")}</b>${ch.res.ok?"":`<p>${mdc(T(ch.res.m))}</p>`}<pre>${esc(ch.res.out)}</pre></div>`:""}
+    </section>`; }
+  /* D */
+  const D = x.id===3 ? previewCard() : "";
+  return `<div class="pgwrap"><p class="sandbox big"><svg class="i"><use href="#i-shield"/></svg>${T(UI4.safe)}</p>${A}${B}${C}${D}</div>`;
+}
+
+function previewCard(){
+  const v = S.pg.view, mineReady = S.pg.ch.solved;
+  const tabs = [["before",UI4.vBefore],["after",UI4.vAfter],["mine",UI4.vMine]];
+  const url = S.pg.screen==="login"?"/login":"/reset";
+  let screen;
+  if(v==="mine" && !mineReady) screen = `<div class="pvempty">${S.lang==="hi"?"Pehle upar ka 'Ab tum karo' challenge poora karo. Phir yahan tumhara version chalega.":"Finish the 'Your turn' challenge above first. Then your version runs here."}</div>`;
+  else if(S.pg.screen==="login" || v==="before") screen = `<div class="mock"><h6>notes-app</h6><label>Email<input disabled value="ankit@example.com"></label><label>Password<input disabled type="password" value="secret"></label><button class="mbtn" disabled>Login</button>${v!=="before"?`<a class="mlink" data-pv="reset">Forgot password?</a>`:`<p class="mnote">${S.lang==="hi"?"Password bhoole? Koi raasta nahi.":"Forgot your password? No way back in."}</p>`}</div>`;
+  else {
+    const st = S.pg.pvState;
+    screen = `<div class="mock"><h6>${S.lang==="hi"?"Password reset":"Reset password"}</h6>
+      <label>Email<input id="pvEmail" placeholder="tum@example.com" value=""></label>
+      <button class="mbtn" id="pvSend" ${st==="stuck"?"disabled":""}>${st==="stuck"?(S.lang==="hi"?"Bhej rahe hain…":"Sending…"):(S.lang==="hi"?"Reset link bhejo":"Send reset link")}</button>
+      ${st==="sent"?`<p class="mok">${S.lang==="hi"?"Link bhej diya! Email check karo.":"Link sent! Check your email."}</p>`:""}
+      ${st==="err"?`<p class="merr">Reset link nahi bhej paaye. Email check karo.</p>`:""}
+      ${st==="stuck"?`<p class="mbug">${S.lang==="hi"?"Yahi bug hai: server ne error diya, par screen pe kuch nahi aaya. Button atka reh gaya.":"That's the bug: the server returned an error, but nothing showed. The button is stuck."}</p>`:""}
+      <a class="mlink" data-pv="login">← Login</a>
+      <p class="mhint">${S.lang==="hi"?"Try karo: sahi email, aur phir 'galat' likh ke.":"Try a valid email, then type 'wrong'."}</p></div>`;
+  }
+  return `<section class="card pg"><h5>${T(UI4.dHead)}</h5><p class="muted">${T(UI4.dLede)}</p>
+    <div class="pvtabs">${tabs.map(([k,l])=>`<button data-pvview="${k}" aria-pressed="${v===k}">${T(l)}</button>`).join("")}</div>
+    <div class="browser"><div class="bbar"><i></i><i></i><i></i><span>localhost:5173${v==="before"?"/login":url}</span></div><div class="bbody">${screen}</div></div></section>`;
+}
+
+function pgPromptText(){ const r=S.pg.run; if(!r) return ""; const d=r.diff.filter(([s])=>s!==" ").map(([s,t])=>(s==="+"?"+ ":"- ")+t).join("\n");
+  return (S.lang==="hi"?"Maine sandbox mein ye badlaav try kiya. Isko project mein lagao, phir lint aur tests chalao:\n\n":"I tried this change in a sandbox. Apply it to the project, then run lint and tests:\n\n")+d; }
+function all(){ labels(); rail(); strip(); report(); chatRender(); }
+
+/* =========================================================
+   EVENTS
+   ========================================================= */
+document.addEventListener("click",e=>{
+  const line = e.target.closest("[data-ask]");
+  if(line && !e.target.closest("button,a")){ S.ask = S.ask===line.dataset.ask ? null : line.dataset.ask; report(); return; }
+  const b = e.target.closest("button,a,[data-node]"); if(!b) return;
+  const x = S.view==="turn" ? turn() : null;
+  if(b.dataset.lang){ S.lang=b.dataset.lang; all(); }
+  else if(b.dataset.level){ S.level=b.dataset.level; S.bView=null; all(); }
+  else if(b.dataset.turn){ S.view="turn"; S.turn=+b.dataset.turn; S.file=0; S.wireSel=null; S.step=0; S.bView=null; S.ask=null; S.claimsOpen=false; const t=turn(); S.followLive=t.live; S.cur=t.dur; all(); }
+  else if(b.id==="ovBtn"){ S.view="overview"; all(); }
+  else if(b.id==="themeBtn"){ const r=document.documentElement; r.dataset.theme = r.dataset.theme==="dark"?"light":"dark"; try{ localStorage.setItem("vx-theme", r.dataset.theme); }catch(err){} }
+  else if(b.dataset.tab){ S.tab=b.dataset.tab; report(); }
+  else if(b.dataset.step){ S.step=+b.dataset.step; S.bView=null; report(); window.scrollTo({top:$("#nav").offsetTop-10,behavior:"smooth"}); }
+  else if(b.dataset.go){ S.step=+b.dataset.go; report(); window.scrollTo({top:$("#nav").offsetTop-10,behavior:"smooth"}); }
+  else if(b.id==="finishBtn"){ S.done[S.turn]=true; rail(); report(); }
+  else if(b.id==="backLesson"){ S.bView=null; report(); }
+  else if(b.dataset.file){ S.file=+b.dataset.file; S.ask=null; report(); }
+  else if(b.dataset.jump){ S.cur=+b.dataset.jump; S.followLive=false; S.stripOpen=true; if(S.level==="dev") S.tab = "logs"; else S.bView="live"; all(); }
+  else if(b.dataset.node){ S.wireSel = S.wireSel===b.dataset.node?null:b.dataset.node; report(); }
+  else if(b.dataset.q){ (S.quiz[S.turn] ||= {})[+b.dataset.q]=+b.dataset.o; report(); }
+  else if(b.id==="followBtn"){ S.followLive=true; S.cur=turn().dur; all(); }
+  else if(b.id==="tlToggle"){ S.stripOpen=!S.stripOpen; strip(); }
+  else if(b.id==="claimsToggle"){ S.claimsOpen=!S.claimsOpen; report(); }
+  else if(b.id==="runTests"){ const id=S.turn; S.tests[id]="running"; report(); setTimeout(()=>{ S.tests[id]="done"; if(S.turn===id) report(); }, 1600); }
+  else if(b.dataset.copy){ const k=b.dataset.copy;
+    const txt = k==="pgprompt" ? pgPromptText() : k.startsWith("todo:") ? T((todoItems(turn()).find(it=>"todo:"+it.k===k)||{}).p) : k==="claimfix" ? T(CLAIM_FIX[S.turn]) : k==="exp" ? exportText(S.exp) : T((IMPACT_PROMPTS[S.turn]||[])[+k.slice(3)]);
+    copyText(txt,k); report(); }
+  else if(b.dataset.exp){ S.exp = S.exp===b.dataset.exp?null:b.dataset.exp; report(); }
+  else if(b.dataset.revise){ S.view="turn"; S.turn=+b.dataset.revise; S.level="beg"; S.step=5; S.bView=null; S.quiz[S.turn]={}; const t=turn(); S.cur=t.dur; all(); }
+  else if(b.dataset.pgedit){ S.pg.hunk=b.dataset.pgedit; S.pg.run=null; S.pg.act=null; if(S.level==="dev") S.tab="play"; else { S.step=3; S.bView=null; } report(); window.scrollTo({top:$("#nav").offsetTop-10,behavior:"smooth"}); }
+  else if(b.id==="pgRun"){ pgRun(); }
+  else if(b.id==="pgReset"){ delete S.pg.code[S.pg.hunk]; S.pg.run=null; S.pg.act=null; report(); }
+  else if(b.id==="pgApply"){ S.pg.act="confirm"; report(); }
+  else if(b.id==="pgApplyYes"){ S.pg.act="applied"; report(); }
+  else if(b.id==="pgApplyNo"){ S.pg.act=null; report(); }
+  else if(b.id==="pgDiscard"){ delete S.pg.code[S.pg.hunk]; S.pg.run=null; S.pg.act="discarded"; report(); S.pg.act=null; }
+  else if(b.dataset.pred){ const [i,j]=b.dataset.pred.split(":").map(Number); S.pg.pred[i]=j; report(); }
+  else if(b.dataset.predrun){ S.pg.predRun[+b.dataset.predrun]=true; report(); }
+  else if(b.id==="chCheck"){ const ch=S.pg.ch; const code = ch.showSol ? CHALLENGE[S.turn].solution : ch.code; ch.res = chCheck(code); if(ch.res.ok) ch.solved=true; report(); }
+  else if(b.id==="chHint"){ S.pg.ch.hints++; report(); }
+  else if(b.id==="chSol"){ S.pg.ch.showSol=true; S.pg.ch.code=CHALLENGE[S.turn].solution; report(); }
+  else if(b.dataset.pvview){ S.pg.view=b.dataset.pvview; S.pg.pvState=null; if(S.pg.view==="before") S.pg.screen="login"; report(); }
+  else if(b.dataset.pv){ S.pg.screen=b.dataset.pv; S.pg.pvState=null; report(); }
+  else if(b.id==="pvSend"){ const v=($("#pvEmail")||{}).value||""; const bad = !v.includes("@") || /wrong|galat/i.test(v); S.pg.pvState = bad ? (S.pg.view==="mine"?"err":"stuck") : "sent"; report(); }
+  else if(b.dataset.todo){ S.todo[b.dataset.todo]=!S.todo[b.dataset.todo]; report(); }
+  else if(b.id==="chatFab"){ S.chatOpen=true; chatRender(); setTimeout(()=>{ const i=$("#chatIn"); if(i) i.focus(); },50); }
+  else if(b.id==="chatClose"){ S.chatOpen=false; chatRender(); }
+  else if(b.dataset.chatq){ chatAsk(T(CHAT_QA[+b.dataset.chatq].q)); }
+  else if(b.id==="askSend"){ const o=$("#askOut"); if(o) o.hidden=false; }
+  else if(b.id==="ebBtn"){ $("#ebOut").hidden=false; }
+});
+document.addEventListener("input",e=>{ if(e.target.id==="pgCode"){ S.pg.code[S.pg.hunk]=e.target.value; return; } if(e.target.id==="chCode"){ S.pg.ch.code=e.target.value; S.pg.ch.showSol=false; return; } });
+document.addEventListener("change",e=>{ if(e.target.id==="pgPick"){ S.pg.hunk=e.target.value; S.pg.run=null; S.pg.act=null; report(); } });
+document.addEventListener("keydown",e=>{ if(e.key==="Tab" && e.target.classList && e.target.classList.contains("editor")){ e.preventDefault(); const t=e.target, s=t.selectionStart; t.value=t.value.slice(0,s)+"  "+t.value.slice(t.selectionEnd); t.selectionStart=t.selectionEnd=s+2; t.dispatchEvent(new Event("input",{bubbles:true})); } });
+document.addEventListener("input",e=>{ if(e.target.id==="eb") $("#ebBtn").disabled = e.target.value.trim().length<10; });
+document.addEventListener("keydown",e=>{
+  const n = e.target.closest?.("[data-node]");
+  if(n && (e.key==="Enter"||e.key===" ")){ e.preventDefault(); n.click(); }
+  if(e.target.id==="trace" && (e.key==="ArrowRight"||e.key==="ArrowLeft")){
+    e.preventDefault(); const x=turn(); S.followLive=false; S.cur=Math.max(0,Math.min(x.dur,S.cur+(e.key==="ArrowRight"?1:-1))); if(S.level!=="dev" && x.lesson) S.bView="live"; strip(); report();
+  }
+});
+/* signature: scrub the recorder strip */
+(function(){
+  const tr = $("#trace"); let drag=false;
+  const set = ev => { const r=tr.getBoundingClientRect(); const x=turn(); const dur=Math.max(x.live?Math.max(30,x.dur+6):x.dur,1);
+    S.cur = Math.max(0,Math.min(x.dur, (ev.clientX-r.left)/r.width*dur)); S.followLive = x.live && S.cur>=x.dur-.5;
+    if(S.level==="dev"){ if(!["live","logs"].includes(S.tab)) S.tab="live"; } else if(x.lesson) S.bView="live"; strip(); report(); };
+  tr.addEventListener("pointerdown",ev=>{drag=true;tr.classList.add("drag");tr.setPointerCapture(ev.pointerId);set(ev);});
+  tr.addEventListener("pointermove",ev=>{ if(drag) set(ev); });
+  tr.addEventListener("pointerup",()=>{drag=false;tr.classList.remove("drag");});
+})();
+window.addEventListener("resize",()=>strip());
+
+/* live simulation: turn 4 grows */
+let li=0;
+function pushLive(){
+  const x = TURNS[3]; if(li>=LIVE_SCRIPT.length){ return; }
+  const e = LIVE_SCRIPT[li++]; x.events.push(e); x.dur = e.t;
+  if(e.ch==="edit"){ x.files.push({path:e.target,isNew:!!e.isNew,add:e.add,del:e.del,hunks:[{start:1,lines:[["+", S.lang==="hi"?"/* diff turn ke saath likha ja raha hai */":"/* diff is being written as the turn runs */"]],note:{beg:{hi:"Ye file abhi badli hai. Poora samjhaana turn khatam hone pe aayega.",en:"This file just changed. The full explanation comes when the turn ends."},dev:{hi:"Live diff; analysis Stop hook pe chalega.",en:"Live diff; analysis runs on the Stop hook."}}}]}); }
+  if(S.turn===4 && S.view==="turn"){ if(S.followLive) S.cur=x.dur; all(); } else { rail(); strip(); }
+  setTimeout(pushLive, 2600);
+}
+{ const [h,at]=location.hash.slice(1).split('@'); const [a,b]=(h||'').replace(/-?(dark|light)/,'').split('-');
+  if(a==='dev'){ S.level='dev'; if(b) S.tab=b; } else if(a==='step'){ S.step=+b||0; } else if(a==='ov'){ S.view='overview'; } else if(a==='tests'){ S.tests[3]='done'; } else if(a==='pg'){ S.step=3; if(b==='run'){ S.pg.hunk='0:1'; S.pg.code['0:1']="export async function requestPasswordReset(email) {\n  const res = http.post('/auth/reset', { email });\n  if (!res.ok) {\n    throw new AuthError(res.status, 'Reset link nahi bhej paaye');\n  }\n  return true;\n}"; S.pg.demo=true; } if(b==='pred'){ S.pg.pred={0:0,1:1}; S.pg.predRun={0:true,1:true}; } if(b==='ch'){ S.pg.ch.code="async function onSubmit(e) {\n  e.preventDefault();\n  try {\n    await requestPasswordReset(email);\n    setSent(true);\n  } catch (err) {\n    setError('Reset link nahi bhej paaye. Email check karo.');\n  }\n}"; S.pg.ch.hints=1; S.pg.ch.res={ok:true,out:"✓ ResetPassword > shows an error when reset fails\nTests  3 passed (3)"}; S.pg.ch.solved=true; S.pg.view='mine'; S.pg.screen='reset'; S.pg.pvState='err'; } if(b==='pv'){ S.pg.view='after'; S.pg.screen='reset'; S.pg.pvState='stuck'; } }
+  else if(a==='chat'){ S.chatOpen=true; S.chat=[{who:'me',t:T(CHAT_QA[0].q)},{who:'ai',t:T(CHAT_QA[0].a)}]; } else if(a==='ask'){ S.step=1; S.ask='3:0:0:4'; }
+  if(at) S.cur=+at; if(location.search.includes('open')) S.stripOpen=true; }
+all();
+if(S.pg.demo) pgRun();
+setTimeout(pushLive, 900);
+</script>
+</body>
+</html>

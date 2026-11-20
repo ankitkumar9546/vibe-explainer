@@ -1,0 +1,10 @@
+{
+  "name": "vibe-explainer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "See what your AI coding agent did, explained like a teacher.",
+  "bin": { "vibe-explainer": "bin/vibe-explainer.js" },
+  "dependencies": { "@vibe-explainer/core": "0.0.0" },
+  "engines": { "node": ">=20" }
+}

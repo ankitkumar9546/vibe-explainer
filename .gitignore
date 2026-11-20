@@ -1,0 +1,7 @@
+node_modules/
+*.tmp
+.DS_Store
+# local tool state, not part of the product
+.impeccable/questions/
+.impeccable/review/
+.claude/settings.local.json
