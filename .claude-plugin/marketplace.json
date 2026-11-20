@@ -1,0 +1,12 @@
+{
+  "name": "vibe-explainer",
+  "owner": { "name": "Ankit Kumar" },
+  "description": "vibe-explainer: see what your AI coding agent did, explained like a teacher.",
+  "plugins": [
+    {
+      "name": "vibe-explainer",
+      "source": "./",
+      "description": "See what your AI coding agent did, explained like a teacher."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "name": "vibe-explainer",
+  "version": "0.1.0",
+  "description": "Records what Claude Code does in your project and explains it like a teacher: timeline, diff in plain words, claims checked against evidence, impact, quiz. Everything stays on your machine.",
+  "author": { "name": "Ankit Kumar" },
+  "homepage": "https://github.com/ankitkumar9546/vibe-explainer",
+  "repository": "https://github.com/ankitkumar9546/vibe-explainer",
+  "license": "MIT",
+  "keywords": ["learning", "explain", "diff", "teacher", "beginner", "hinglish"],
+  "hooks": "./plugin/hooks/hooks.json",
+  "commands": "./plugin/commands",
+  "skills": "./plugin/skills"
+}

@@ -5,50 +5,61 @@
 You asked an AI agent to write code. It did. But what exactly did it change, why, what can
 that break, and is "tests pass" actually true? vibe-explainer records every step the agent
 takes and turns it into a lesson you can follow: a timeline, the diff in plain words, the
-impact, a check of the agent's claims against the evidence, a hands-on playground, and a quiz.
+impact, a check of the agent's claims against the evidence, and a quiz, in Hinglish or English.
 
-Everything runs on your machine. Nothing is uploaded except to the teacher model you choose.
+Everything runs on your machine. Your project's own `.git` is never written to. Nothing is
+uploaded except to the teacher model, and that is your own `claude`.
 
-> **Status: early development.** Recording works with Claude Code. The console is designed
-> (see the [mockup](docs/mockup/console.html)) and being built. Roadmap: [docs/Roadmap.md](docs/Roadmap.md).
+> **Status: early development.** It works with Claude Code today. Roadmap: [docs/Roadmap.md](docs/Roadmap.md).
+> The full planned console (guided lessons, playground, to-do) is in the [mockup](docs/mockup/console.html).
 
-## Try the recorder (Claude Code)
+## Install (Claude Code plugin)
 
-```bash
-git clone <this repo> && cd vibe-explainer && npm install
-node packages/cli/bin/vibe-explainer.js init /path/to/your/project
-# use Claude Code in that project as usual, then:
-node packages/cli/bin/vibe-explainer.js status /path/to/your/project
+Inside Claude Code:
+
+```
+/plugin marketplace add ankitkumar9546/vibe-explainer
+/plugin install vibe-explainer@vibe-explainer
 ```
 
-`init` adds hooks to your project's `.claude/settings.local.json` (personal, not committed).
-`init --remove` takes them out. Recordings live in `~/.vibe-explainer/`. Your project's own
-`.git` is never written to: before/after snapshots of each prompt live in a separate shadow repo.
+Requirements: Node.js 22+ and git on your PATH. From then on every session in every project
+is recorded under `~/.vibe-explainer/`.
 
-Open the console in your browser (live while the agent works):
+| Command | What it does |
+|---|---|
+| `/vibe-explainer:explain` | Writes a lesson for your last finished prompt (about a minute, using your own Claude plan). Options: `--lang hi\|en`, `--level beg\|dev`, `--turn N` |
+| `/vibe-explainer:console` | Opens the console in your browser: a live timeline, the diff, logs, and the lesson |
+
+You can also just ask *"what did you change and is it safe?"*. The bundled skill answers from
+the recorded evidence, not from memory.
+
+## Without the plugin (CLI)
 
 ```bash
-node packages/cli/bin/vibe-explainer.js open /path/to/your/project
+git clone https://github.com/ankitkumar9546/vibe-explainer && cd vibe-explainer
+node packages/cli/bin/vibe-explainer.js init /path/to/project     # hooks for one project
+node packages/cli/bin/vibe-explainer.js open /path/to/project     # the console
+node packages/cli/bin/vibe-explainer.js explain /path/to/project --lang en
+node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson after every prompt
 ```
 
-Get a lesson for the last prompt (uses your own `claude` CLI, no API key):
-
-```bash
-node packages/cli/bin/vibe-explainer.js explain /path/to/your/project --lang en
-node packages/cli/bin/vibe-explainer.js config set mode auto   # teach after every prompt
-```
+Use either the plugin or `init` in a project, not both, or every step is recorded twice.
+`init --remove` takes the project hooks out.
 
 ## How it works
 
-Claude Code hooks → recorder → local store → (next phases) git snapshots, code analysis, a
-teacher model writes the lesson → a console in your browser. Details:
-[Architecture](docs/Architecture.md) · [Product](docs/PRD.md) · [Data format](docs/DataFormat.md) · [Design](docs/Design.md).
+Claude Code hooks feed a recorder, which writes to a local store. A shadow git repo snapshots
+the code before and after each prompt. The teacher (`claude -p`) writes the lesson, and a local
+console shows it.
+
+[Architecture](docs/Architecture.md) · [Product](docs/PRD.md) · [Data format](docs/DataFormat.md) · [Design](docs/Design.md) · [Rules](docs/Rules.md)
 
 ## Development
 
 ```bash
 npm install
 npm test
+claude --plugin-dir .      # try the plugin from this checkout without installing it
 ```
 
-Node 20+. No native dependencies. Rules for contributors: [docs/Rules.md](docs/Rules.md).
+MIT licence. Node 22+. No native dependencies.

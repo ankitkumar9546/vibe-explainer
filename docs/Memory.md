@@ -2,6 +2,26 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-20 (late): Phase 5, Claude Code plugin
+
+- `.claude-plugin/plugin.json` and `marketplace.json` are at the repo root (source `./`). The plugin's parts live in `plugin/`: `hooks/hooks.json`, `commands/explain.md`, `commands/console.md` and `skills/explain-session/SKILL.md`.
+- The CLI now imports core by relative path, so an installed copy needs no `npm install`.
+- New CLI pieces:
+  - `baseline` (started detached by `SessionStart` the first time a project is seen).
+  - `open --detach`, plus reuse of a running console through `~/.vibe-explainer/server.json`.
+  - `explain` searches across sessions and skips `/vibe-explainer…` prompts.
+- **Found in the real check, then fixed:**
+  - The `!` command with `"$(pwd)"` was refused by Claude Code's permission check ("quoted text can't be checked"). The commands now use no `$(…)`.
+  - `/explain` opens its own session, so `explain` used to look only at that new, empty session.
+- **Checked:**
+  - `claude plugin validate .`: passes, with optional warnings left (no icon; CLAUDE.md at the root is for contributors).
+  - A real `claude -p --plugin-dir D:\vibe-explainer` run in a fresh git project with no `init` recorded 8 events, and the diff was `greet.py +4 −0`.
+  - A real `/vibe-explainer:explain --lang en` wrote the lesson, and Claude showed the claims (4 backed, 1 unverified).
+  - `open --detach` started the console, and a second call reused it.
+  - `npm test`: 22/22 pass.
+- **Not checked yet:** the 2-command marketplace install from GitHub. The repo is private, so it works only for Ankit's account. It goes public on his yes.
+- **Next:** the first demo. README GIF, a GitHub Pages demo from a real session, and the repo going public (Ankit decides).
+
 ## 2026-11-20 (night): Phase 4, console v1
 
 - **Server** (`core/src/server.js`): localhost only, token, Host allow-list, JSON API, SSE stream, `POST /api/explain`, and auto-teach while open (`mode=auto`).

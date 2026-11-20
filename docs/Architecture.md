@@ -101,6 +101,18 @@ Each one runs `vibe-explainer hook`, which reads the JSON payload on stdin.
 | 1 to 4 | `vibe-explainer init` writes them into the project's `.claude/settings.local.json`, which is personal and not committed |
 | 5 on | The plugin ships them in `hooks/hooks.json`. Install is `/plugin marketplace add …` then `/plugin install vibe-explainer` |
 
+**The plugin as built (Phase 5, 11-20):**
+- The repo root is both the marketplace and the plugin. `.claude-plugin/marketplace.json` lists the plugin with `source: "./"`, and `.claude-plugin/plugin.json` points at `plugin/hooks/hooks.json`, `plugin/commands/` and `plugin/skills/`.
+- When the plugin is installed, Claude Code copies the repo without running `npm install`. So the CLI imports core by **relative path** (`../../core/src/index.js`) and there are no runtime dependencies.
+- Hooks run `node "${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js" hook`. The timeout is 30 s for UserPromptSubmit and Stop (the snapshots) and 10 s for the rest.
+- With no `init`, `SessionStart` starts a detached `baseline` snapshot the first time it sees a project.
+- Commands:
+  - `/vibe-explainer:explain [--lang --level --turn]` runs `explain` through `!` bash. Don't use `$(…)`: Claude Code's permission check refuses it.
+  - `/vibe-explainer:console` runs `open . --detach`. That reuses a running console via `~/.vibe-explainer/server.json`, or starts one and waits for it.
+- Skill `explain-session`: answers "what did you change" from the store, not from memory.
+- `explain` picks the newest finished prompt **across sessions**, skipping `/vibe-explainer…` prompts, because `/explain` opens a session of its own.
+- Try it without installing: `claude --plugin-dir <repo>`. Validate it: `claude plugin validate .`
+
 The transcript path arrives in every payload (`transcript_path`). The recorder stores it. The
 teacher reads the agent's thinking and final reply from it.
 

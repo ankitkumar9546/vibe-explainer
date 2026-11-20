@@ -1,0 +1,11 @@
+{
+  "description": "vibe-explainer: record every prompt, tool call and stop; snapshot code before and after each prompt.",
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 10 }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 30 }] }],
+    "PreToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 10 }] }],
+    "PostToolUse": [{ "matcher": "*", "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 10 }] }],
+    "Stop": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 30 }] }],
+    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "node \"${CLAUDE_PLUGIN_ROOT}/packages/cli/bin/vibe-explainer.js\" hook", "timeout": 10 }] }]
+  }
+}
