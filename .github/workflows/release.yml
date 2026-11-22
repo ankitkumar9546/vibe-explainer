@@ -1,0 +1,41 @@
+name: Release
+# Push a tag v<version> (the version is in packages/core/src/version.js) and this publishes
+# vibe-explainer to npm and makes the GitHub release, with the CHANGELOG section as notes.
+on:
+  push:
+    tags: ["v*"]
+permissions:
+  contents: write   # the GitHub release
+  id-token: write   # npm provenance
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+      - name: The npm token is set
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -z "$NODE_AUTH_TOKEN" ]; then echo "::error::Add the NPM_TOKEN secret (Settings → Secrets and variables → Actions)"; exit 1; fi
+      - run: npm install
+      - run: npm test
+      - name: The tag matches the version
+        run: node scripts/pack-npm.mjs --check-tag "$GITHUB_REF_NAME"
+      - name: Build the package
+        run: |
+          node scripts/pack-npm.mjs
+          cd dist && npm pack ./npm
+      - name: Publish to npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish dist/vibe-explainer-*.tgz --provenance --access public
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/pack-npm.mjs --notes "$GITHUB_REF_NAME" > notes.md
+          gh release create "$GITHUB_REF_NAME" dist/vibe-explainer-*.tgz --title "vibe-explainer $GITHUB_REF_NAME" --notes-file notes.md

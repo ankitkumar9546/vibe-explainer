@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, makeTeacher, teacherForSession, setKey, clearKey, keyStatus, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, makeTeacher, teacherForSession, setKey, clearKey, keyStatus, startServer, shadowDir, ensureAnalysis, buildExport, startWatch, VERSION } from "../../core/src/index.js";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -67,10 +67,16 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
   vibe-explainer watch [dir] [--agent NAME] [--quiet SECONDS]
                                      record an agent with no hooks (Cursor, Copilot…) by watching files
   vibe-explainer mcp                 MCP server on stdio: "what changed yesterday?" from any MCP app
+  vibe-explainer --version          print the version
   vibe-explainer hook                (used by Claude Code; reads a hook payload on stdin)
 `;
 
 switch (cmd) {
+  case "--version":
+  case "-v":
+  case "version":
+    console.log(VERSION);
+    break;
   case "hook": {
     // Rule 2: never block or fail the agent. Always exit 0.
     try {

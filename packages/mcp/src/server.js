@@ -3,9 +3,10 @@
 // stdout carries protocol messages ONLY; anything else goes to stderr.
 import { createInterface } from "node:readline";
 import { TOOLS, callTool } from "./tools.js";
+import { VERSION } from "../../core/src/version.js";
 
 export const SUPPORTED = ["2025-06-18", "2025-03-26", "2024-11-05"];
-export const SERVER_INFO = { name: "vibe-explainer", title: "vibe-explainer: what your AI agent changed", version: "0.1.0" };
+export const SERVER_INFO = { name: "vibe-explainer", title: "vibe-explainer: what your AI agent changed", version: VERSION };
 
 /** Handle one JSON-RPC message; returns the response object, or null for a notification. */
 export async function handle(store, msg, { now = () => new Date() } = {}) {

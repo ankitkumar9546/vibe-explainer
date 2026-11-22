@@ -186,6 +186,12 @@ teacher reads the agent's thinking and final reply from it.
 - The analysis is made on demand (offline, up to 40 turns) when a tool needs callers or security notes. It is cached in the store like the console's, and is the only write.
 - How it starts: the plugin's `plugin.json` `mcpServers` (`node ${CLAUDE_PLUGIN_ROOT}/packages/mcp/bin/vibe-explainer-mcp.js`), `vibe-explainer mcp`, or any MCP app's config pointing at that file.
 
+## 4c. Release (Phase 13, built 11-22)
+- **One npm package, `vibe-explainer` (changed from the plan of four).** The packages import each other by relative path (§4), so `scripts/pack-npm.mjs` copies `packages/` into `dist/npm` in the same layout, writes its `package.json` (bins `vibe-explainer` and `vibe-explainer-mcp`, no dependencies), and fails if any relative import would point outside the package. Tests, docs, demo and the plugin folder are left out; the plugin is still installed from GitHub.
+- **One version:** `packages/core/src/version.js`. The MCP server, `vibe-explainer --version` and the package read it; `tests/release.test.js` fails if `.claude-plugin/plugin.json` differs or the CHANGELOG has no section for it.
+- **`.github/workflows/release.yml`** runs on a `v*` tag: `npm test`, then the tag must equal `v` + version, then `npm pack`, `npm publish <tgz> --provenance --access public` (secret `NPM_TOKEN`), and `gh release create` with the same tarball and the CHANGELOG section as notes.
+- To release: bump `version.js` and `plugin.json`, add the CHANGELOG section, commit, `git tag vX.Y.Z`, push the tag.
+
 ## 5. Data flow for one turn
 
 1. `UserPromptSubmit`: append the `prompt` event, open turn *n*, take the "before" snapshot (Phase 2).

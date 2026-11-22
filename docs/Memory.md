@@ -2,6 +2,15 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-22 (night): Phase 13, release (built; first tag waits)
+
+- Ankit kept the name **vibe-explainer**; on npm, `vibe-explainer` and the `@vibe-explainer` names were all free (404) on 11-22.
+- **One npm package, not four:** the packages import each other by relative path, so `scripts/pack-npm.mjs` stages `packages/` as it is into `dist/npm` (gitignored), checks every relative import stays inside, and writes the manifest (bins `vibe-explainer`, `vibe-explainer-mcp`; no dependencies).
+- Version in one place, `packages/core/src/version.js` (0.1.0). `vibe-explainer --version` added. `CHANGELOG.md` started. `release.yml`: tag `v*` → tests → tag check → `npm publish --provenance` → GitHub release with the tarball and the CHANGELOG section.
+- `docs/Launch.md`: drafts for LinkedIn, X, r/ClaudeAI and Show HN.
+- **Checked:** `npm test` 69/69 (new `release.test.js`: one version everywhere, tag check, staged package self-contained and its two commands run). `npm publish --dry-run`: 51 files, 428 kB packed (372 kB of it fonts). The tarball installed with `npm install -g --prefix` on D:, then `--version`, `open` serving the console, `vibe-explainer-mcp` answering, `init` writing hooks that point at the installed copy, and a real `claude -p` turn recorded through them (`M a.txt +1 -0`).
+- **Waits on Ankit:** an npm account (2FA on), a granular access token that can publish, saved as the repo secret `NPM_TOKEN`. Then: README gets the npm install line, tag `v0.1.0`, push; the workflow publishes. The launch posts go out after that, by him.
+
 ## 2026-11-22 (evening): Phase 12, MCP server
 
 - `packages/mcp`: a hand-written stdio MCP server, with no SDK because plugin installs have no `npm install`. Tools: `recent_changes`, `get_turn`, `search`, `open_todos`, `list_projects`. It is declared in `plugin.json` `mcpServers` and available as `vibe-explainer mcp`. `claude plugin validate` passes.
