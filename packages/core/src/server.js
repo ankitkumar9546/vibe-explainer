@@ -70,7 +70,7 @@ function turnsOf(store, projectId, sessionId) {
  * @param {{staticDir: string, port?: number, token?: string, onExplain?: (ids: object, opts: object) => Promise<any>, online?: () => boolean, fetchFn?: Function}} opts
  * @returns {Promise<{server: http.Server, port: number, token: string, url: string, close: () => Promise<void>}>}
  */
-export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach, online = () => false, fetchFn, makeTeacher } = {}) {
+export function startServer(store, { staticDir, port = 4321, token = crypto.randomBytes(18).toString("hex"), onExplain, autoTeach, online = () => false, fetchFn, makeTeacher, teacherName = () => "claude" } = {}) {
   const asking = new Set(); // sessions with a chat question in flight
   const running = new Set(); // projects with a sandbox run in flight
   const kept = new Map(); // projectId -> the sandbox kept for "your version" in the preview
@@ -150,7 +150,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
         case "/api/session": {
           const session = readJson(path.join(store.sessionDir(projectId, sessionId), "session.json"));
           if (!session) return send(res, 404, { error: "no such session" });
-          return send(res, 200, { session, turns: turnsOf(store, projectId, sessionId) });
+          return send(res, 200, { session, turns: turnsOf(store, projectId, sessionId), teacher: teacherName() });
         }
         case "/api/turn": {
           const dir = store.turnDir(projectId, sessionId, turn);

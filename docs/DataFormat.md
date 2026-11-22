@@ -79,7 +79,7 @@ Rules:
 }
 ```
 
-**As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher, mode: manual|auto, level: beg|dev, lang: hi|en, model, registry: on|off }`.
+**As built in Phase 3** (v1): the teacher writes `title, summary, asks, why, how, before, after, decision, errors, notes[{file, text}], claims, impact, concepts, quiz, manualTest`, and the tool adds `v, level, lang, teacher, createdAt`. `whatIf` and `challenge` come with the playground (Phase 9). Claim `at` and error `at` are seconds from the turn's start. `turn.lessonError` holds the reason when a lesson failed. Settings live in `~/.vibe-explainer/config.json`: `{ teacher: claude|ollama|gemini|openai, mode: manual|auto, level: beg|dev, lang: hi|en, model, ollamaUrl, openaiBaseUrl, registry: on|off }`. API keys are never stored there (environment only). `lesson.teacher` is `claude`, or `ollama:<model>`, `gemini:<model>`, `openai:<model>`.
 
 ## 3b. Quiz answers (`turns/<n>/quiz.json`), Phase 8
 

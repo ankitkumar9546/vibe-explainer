@@ -39,12 +39,20 @@ const UI = {
   showTl: { hi: "Timeline pe dekho", en: "Show on timeline" },
   st: { backed: { hi: "Saboot hai", en: "Backed" }, unverified: { hi: "Check nahi ho saka", en: "Can't verify" }, none: { hi: "Saboot nahi", en: "No evidence" }, done: { hi: "Hua", en: "Done" }, part: { hi: "Aadha", en: "Partly" }, no: { hi: "Nahi hua", en: "Not done" } },
   teachTitle: { hi: "Is prompt ka lesson abhi nahi bana", en: "No lesson for this prompt yet" },
-  teachNote: { hi: "Lesson tumhare apne `claude` se banta hai (lagbhag 1 minute), aur tumhare Claude plan ki thodi usage leta hai. Code ke secrets pehle chhupaye jaate hain.", en: "The lesson is written by your own `claude` (about a minute) and uses a little of your Claude plan. Secrets are masked first." },
+  teachNote: { hi: "Lesson tumhara teacher {T} likhta hai (lagbhag 1 minute){COST}. Code ke secrets pehle chhupaye jaate hain.", en: "The lesson is written by your teacher {T} (about a minute){COST}. Secrets are masked first." },
   teachBtn: { hi: "Lesson banao", en: "Write the lesson" }, teaching: { hi: "Teacher likh raha hai…", en: "The teacher is writing…" }, teachFail: { hi: "Lesson nahi ban paaya:", en: "The lesson failed:" }, retry: { hi: "Dobara try karo", en: "Try again" },
   waitTurn: { hi: "Prompt khatam hone ke baad lesson ban sakta hai.", en: "A lesson can be written once the prompt finishes." },
   lessonMeta: { hi: "Teacher", en: "Teacher" },
 };
 const T = (o) => (o && typeof o === "object" ? (o[S.lang] ?? o.hi) : o ?? "");
+/** Notes that name the teacher: {T} = its name, {COST} = what using it costs (Phase 11). */
+const teacherWords = (s) => {
+  const t = S.teacher || "claude", local = /^ollama/.test(t);
+  const cost = t === "claude" ? (S.lang === "hi" ? ", tumhare Claude plan ki thodi usage" : ", a little of your Claude plan")
+    : local ? (S.lang === "hi" ? ", tumhare computer pe, free" : ", on your computer, free")
+    : (S.lang === "hi" ? ", tumhari API key ke credits se" : ", paid from your API key's credits");
+  return String(s).replace("{T}", `\`${t}\``).replace("{COST}", cost);
+};
 
 /* ---------- API ---------- */
 let DB = null;
@@ -690,7 +698,7 @@ const P8 = {
   copyFix: { hi: "Fix prompt copy karo", en: "Copy fix prompt" },
   chatBtn: { hi: "Session se poochho", en: "Ask this session" }, chatHead: { hi: "Is session ke baare mein poochho", en: "Ask about this session" },
   chatPh: { hi: "Jaise: login mein kya badla?", en: "e.g. what changed in login?" }, chatSend: { hi: "Bhejo", en: "Send" },
-  chatNote: { hi: "Jawab tumhare apne `claude` se aata hai, sirf is session ke record se (lagbhag 20 second, thodi plan usage).", en: "Answers come from your own `claude`, using only this session's record (about 20 seconds, a little plan usage)." },
+  chatNote: { hi: "Jawab tumhara teacher {T} deta hai, sirf is session ke record se (lagbhag 20 second{COST}).", en: "Answers come from your teacher {T}, using only this session's record (about 20 seconds{COST})." },
   chatThinking: { hi: "Teacher record padh raha hai…", en: "The teacher is reading the record…" },
   chatDemo: { hi: "Demo mein sawaal nahi poochh sakte: iske liye tool apne computer pe chalana hota hai.", en: "Questions don't work in the demo: they need the tool running on your computer." },
   chatQs: [
@@ -780,7 +788,7 @@ function chatRender() {
   if (p.hidden) return;
   const log = S.chats[S.session] ?? [];
   p.innerHTML = `<div class="chathead"><b>${T(P8.chatHead)}</b><button class="iconbtn" id="chatClose" aria-label="Close"><svg class="i"><use href="#i-close"/></svg></button></div>
-    <div class="chatlog" id="chatLog">${log.length ? log.map((m) => `<div class="msg ${m.who} ${m.err ? "err" : ""}">${m.who === "ai" ? code(m.t) : esc(m.t)}</div>`).join("") : `<p class="muted">${code(T(STATIC ? P8.chatDemo : P8.chatNote))}</p>`}
+    <div class="chatlog" id="chatLog">${log.length ? log.map((m) => `<div class="msg ${m.who} ${m.err ? "err" : ""}">${m.who === "ai" ? code(m.t) : esc(m.t)}</div>`).join("") : `<p class="muted">${code(teacherWords(T(STATIC ? P8.chatDemo : P8.chatNote)))}</p>`}
       ${S.chatBusy ? `<div class="msg ai"><span class="spin dark"></span> ${T(P8.chatThinking)}</div>` : ""}</div>
     ${STATIC ? "" : `<div class="chips">${P8.chatQs.map((c, i) => `<button class="chip" data-chatq="${i}" ${S.chatBusy ? "disabled" : ""}>${esc(T(c))}</button>`).join("")}</div>
     <form class="chatform" id="chatForm"><input id="chatIn" placeholder="${esc(T(P8.chatPh))}" aria-label="${esc(T(P8.chatPh))}" ${S.chatBusy ? "disabled" : ""}><button class="primary sm" type="submit" ${S.chatBusy ? "disabled" : ""}>${T(P8.chatSend)}</button></form>`}`;
@@ -851,7 +859,7 @@ const PG = {
   discarded: { hi: "Sandbox saaf kar diya. Asli code waisa hi hai.", en: "Sandbox cleared. Your real code is untouched." },
   bHead: { hi: "2. Kya hoga agar…?", en: "2. What happens if…?" }, bLede: { hi: "Pehle andaaza lagao, phir sandbox mein asli nateeja dekho.", en: "Guess first, then see the real result in the sandbox." },
   make: { hi: "Sawaal aur challenge banwao", en: "Make the questions and challenge" }, making: { hi: "Teacher bana raha hai… (lagbhag 1 minute)", en: "The teacher is making them… (about a minute)" },
-  makeNote: { hi: "Teacher tumhare apne `claude` se ye banata hai (thodi plan usage).", en: "The teacher makes these with your own `claude` (a little plan usage)." },
+  makeNote: { hi: "Ye tumhara teacher {T} banata hai{COST}.", en: "Your teacher {T} makes these{COST}." },
   check: { hi: "Sandbox mein chala ke dekho", en: "Run it in the sandbox" }, right: { hi: "Teacher ka andaaza bhi yahi tha!", en: "The teacher guessed the same!" }, wrong: { hi: "Teacher ne kuch aur socha tha", en: "The teacher expected something else" },
   change: { hi: "Badlaav", en: "The change" }, realOut: { hi: "Asli nateeja", en: "The real result" }, pass: { hi: "sab pass", en: "all passed" }, fail: { hi: "fail", en: "failed" },
   cHead: { hi: "3. Ab tum karo", en: "3. Your turn" }, cCheck: { hi: "Check karo", en: "Check" }, cHint: { hi: "Hint lo", en: "Get a hint" }, cSol: { hi: "Solution dikhao", en: "Show the solution" },
@@ -956,7 +964,7 @@ function playView() {
   /* B + C need the teacher's playground.json */
   const p = info.playground;
   if (!p) {
-    parts.push(`<section class="card pg"><h5>${T(PG.bHead)} · ${T(PG.cHead)}</h5><p class="muted">${code(T(PG.makeNote))}</p>
+    parts.push(`<section class="card pg"><h5>${T(PG.bHead)} · ${T(PG.cHead)}</h5><p class="muted">${code(teacherWords(T(PG.makeNote)))}</p>
       ${st.err2 ? `<p class="err">${esc(st.err2)}</p>` : ""}<div class="pgactions"><button class="primary sm" id="pgMake" ${st.busy ? "disabled" : ""}>${st.busy === "make" ? `<span class="spin"></span>${T(PG.making)}` : `<svg class="i"><use href="#i-spark"/></svg>${T(PG.make)}`}</button></div></section>`);
   } else {
     if (p.whatIf?.length) parts.push(`<section class="card pg"><h5>${T(PG.bHead)}</h5><p class="muted">${T(PG.bLede)}</p>${p.whatIf.map((w, i) => {
@@ -1057,8 +1065,8 @@ function learn() {
   if (!l) {
     if (t.status === "open") return `<div class="empty">${T(UI.waitTurn)}</div>`;
     if (STATIC) return `<div class="empty">${S.lang === "hi" ? "Is demo mein is prompt ka lesson nahi hai." : "This demo has no lesson for this prompt."}</div>`;
-    if (t.status === "analysing" || t.teaching) return `<div class="card teachbox"><h5>${T(UI.teaching)}</h5><span class="spin dark"></span><p class="muted">${code(T(UI.teachNote))}</p></div>`;
-    return `<div class="card teachbox"><h5>${T(UI.teachTitle)}</h5><p class="muted">${code(T(UI.teachNote))}</p>
+    if (t.status === "analysing" || t.teaching) return `<div class="card teachbox"><h5>${T(UI.teaching)}</h5><span class="spin dark"></span><p class="muted">${code(teacherWords(T(UI.teachNote)))}</p></div>`;
+    return `<div class="card teachbox"><h5>${T(UI.teachTitle)}</h5><p class="muted">${code(teacherWords(T(UI.teachNote)))}</p>
       ${t.status === "failed" && t.lessonError ? `<p class="err">${T(UI.teachFail)} ${esc(t.lessonError)}</p>` : ""}
       <button class="primary" id="teachBtn"><svg class="i"><use href="#i-spark"/></svg>${t.status === "failed" ? T(UI.retry) : T(UI.teachBtn)}</button></div>`;
   }
@@ -1082,7 +1090,7 @@ async function loadSessions() {
 }
 async function loadSession() {
   const r = await api("/api/session", { project: S.project, session: S.session });
-  S.turns = r.turns;
+  S.turns = r.turns; S.teacher = r.teacher ?? "claude";
   const asked = Number(params.get("turn"));
   S.turn = S.turns.find((t) => t.n === asked)?.n ?? S.turns.at(-1)?.n ?? null; S.follow = true;
   await loadTurn();

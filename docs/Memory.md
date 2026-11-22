@@ -2,6 +2,19 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-22: Phase 11, teacher adapters
+
+- `core/src/teacher/adapters.js`: `ollamaTeacher`, `geminiTeacher`, `openaiTeacher` (works with any OpenAI-compatible base URL) and `makeTeacher(config)`. The CLI and server now go through `makeTeacher` everywhere: lessons, chat, explain-back, playground and watch.
+- Config: `teacher claude|ollama|gemini|openai`, `ollamaUrl`, `openaiBaseUrl`. Keys come only from the environment.
+- The console's notes name the teacher and its cost (`/api/session` returns `teacher`).
+- **Checked:**
+  - `npm test`: 57/57. Each adapter, given its provider's response shape (Ollama over a real local HTTP server), produces the same validated lesson fields.
+  - Request URL, header and body per provider; the key is never in the URL; a local OpenAI-compatible server is allowed without a key.
+  - Clear errors for: no key, a 401, Ollama unreachable, Gemini blocked.
+  - From the CLI: "Ollama (qwen2.5-coder:7b) is not reachable (ECONNREFUSED)" and "Gemini needs an API key: set GEMINI_API_KEY…".
+- **Not checked:** a real model answering. Ollama is NOT installed on this machine: its folder is on PATH but `ollama.exe` is missing. There are no Gemini or OpenAI keys. Waiting on Ankit to install Ollama on D: or provide a key.
+- **Next:** Phase 12, the MCP server.
+
 ## 2026-11-21 (late night): Phase 10, watch
 
 - `core/src/watch.js` `startWatch()` and the CLI `watch [dir] --agent --quiet`. Turns come from bursts of file changes. Before = the previous snapshot. A typed line names the prompt, and an empty line ends the turn now. Temp and ignored paths are skipped, and an unchanged tree is dropped.

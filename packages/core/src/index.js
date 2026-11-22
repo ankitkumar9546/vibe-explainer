@@ -8,6 +8,7 @@ export { buildContext, stepLines, agentWords } from "./teacher/context.js";
 export { buildPrompt, extractJson, validateLesson } from "./teacher/lesson.js";
 export { teachTurn } from "./teacher/teach.js";
 export { claudeTeacher } from "./teacher/claude.js";
+export { makeTeacher, ollamaTeacher, geminiTeacher, openaiTeacher, TEACHERS, DEFAULT_MODELS } from "./teacher/adapters.js";
 export { startServer } from "./server.js";
 export { buildTodo, testRuns } from "./todo.js";
 export { startWatch, watchedPath } from "./watch.js";

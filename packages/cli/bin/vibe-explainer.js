@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, claudeTeacher, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, makeTeacher, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -59,7 +59,9 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
         [--turn N] [--session ID] [--json] [--offline]
   vibe-explainer export [dir] --kind pr|commit|note [--session ID] [--lang hi|en]
                                      ready-made text from the newest session
-  vibe-explainer config [set KEY VALUE]   teacher, mode (manual|auto), level, lang, model, registry (on|off)
+  vibe-explainer config [set KEY VALUE]   teacher (claude|ollama|gemini|openai), mode (manual|auto), level, lang,
+                                     model, ollamaUrl, openaiBaseUrl, registry (on|off)
+                                     keys: GEMINI_API_KEY / OPENAI_API_KEY in the environment, never in config
   vibe-explainer open [dir] [--port N] [--no-browser] [--detach]   open the console in your browser
   vibe-explainer watch [dir] [--agent NAME] [--quiet SECONDS]
                                      record an agent with no hooks (Cursor, Copilot…) by watching files
@@ -114,7 +116,7 @@ switch (cmd) {
     const level = flag("level") ?? cfg.level, lang = flag("lang") ?? cfg.lang;
     console.log(`Teaching turn ${turn} of session ${session.id} (${level}, ${lang}) with ${cfg.teacher}…`);
     const t0 = Date.now();
-    const res = await teachTurn(store, { projectId, sessionId: session.id, turn }, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level, lang, online: cfg.registry === "on" });
+    const res = await teachTurn(store, { projectId, sessionId: session.id, turn }, { teacher: makeTeacher(cfg, { home: store.home }), level, lang, online: cfg.registry === "on" });
     if (!res.ok) { console.error(`Lesson failed: ${res.error}`); process.exit(1); }
     const l = res.lesson;
     console.log(`\n${l.title}\n${l.summary}\n`);
@@ -182,7 +184,7 @@ switch (cmd) {
         const sum = info.files.map((f) => `${f.path} +${f.add ?? "?"} -${f.del ?? "?"}`).join(", ");
         console.log(`turn ${info.turn}: ${info.files.length} file${info.files.length === 1 ? "" : "s"} (${sum})`);
         if (loadConfig(store.home).mode === "auto") {
-          teaching = teaching.then(() => teachTurn(store, info, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: cfg.level, lang: cfg.lang, online: cfg.registry === "on" }))
+          teaching = teaching.then(() => teachTurn(store, info, { teacher: makeTeacher(cfg, { home: store.home }), level: cfg.level, lang: cfg.lang, online: cfg.registry === "on" }))
             .then((r) => console.log(r.ok ? `  lesson ready for turn ${info.turn}` : `  lesson failed: ${r.error}`)).catch(() => {});
         }
       },
@@ -255,9 +257,10 @@ A prompt ends after ${quietMs / 1000}s with no changes. Type what you asked the 
     const staticDir = path.resolve(path.dirname(BIN), "..", "..", "console");
     const srv = await startServer(store, {
       staticDir, port: Number(flag("port")) || 4321,
-      onExplain: (ids, o) => teachTurn(store, ids, { teacher: claudeTeacher({ home: store.home, model: cfg.model || undefined }), level: o.level, lang: o.lang, online: loadConfig(store.home).registry === "on" }),
+      onExplain: (ids, o) => teachTurn(store, ids, { teacher: makeTeacher(loadConfig(store.home), { home: store.home }), level: o.level, lang: o.lang, online: loadConfig(store.home).registry === "on" }),
       online: () => loadConfig(store.home).registry === "on",
-      makeTeacher: () => claudeTeacher({ home: store.home, model: loadConfig(store.home).model || undefined, timeoutMs: 180000 }),
+      makeTeacher: () => makeTeacher(loadConfig(store.home), { home: store.home, timeoutMs: 180000 }),
+      teacherName: () => { const c = loadConfig(store.home); return c.teacher === "claude" ? "claude" : `${c.teacher}${c.model ? `:${c.model}` : ""}`; },
       autoTeach: () => loadConfig(store.home).mode === "auto" ? { level: loadConfig(store.home).level, lang: loadConfig(store.home).lang } : null,
     });
     writeJson(serverFile, { port: srv.port, token: srv.token, pid: process.pid, url: srv.url, startedAt: new Date().toISOString() });

@@ -77,6 +77,15 @@ Files: `mask.js` (secrets), `context.js` (prompt, step lines, diff, and the agen
 - Modes (`vibe-explainer config set mode manual|auto`): `manual` (the default) only teaches on `vibe-explainer explain`; `auto` teaches inside `finish-turn` after every prompt.
 - Turn status goes `analysing` → `ready`, or `failed` with `turn.lessonError`.
 
+**Adapters (Phase 11, built 11-22)** in `teacher/adapters.js`. Every teacher is `{ name, ask(prompt) }`, so the lesson, chat, explain-back and playground code is the same for all; `makeTeacher(config)` picks one.
+- `claude`: `claude -p` (the default, uses the user's Claude plan).
+- `ollama`: `POST {ollamaUrl}/api/chat` (default `http://127.0.0.1:11434`), `stream: false`, `num_ctx 32768` so a long diff isn't cut. Free and offline.
+- `gemini`: `POST …/v1beta/models/{model}:generateContent`, key in the `x-goog-api-key` header.
+- `openai`: `POST {openaiBaseUrl}/chat/completions` (default `https://api.openai.com/v1`), so any compatible server works (LM Studio, OpenRouter, vLLM). A localhost server needs no key.
+- **Keys only from the environment** (`GEMINI_API_KEY`/`GOOGLE_API_KEY`, `OPENAI_API_KEY`). `config.json` has no key field and refuses unknown settings. Keys go only in headers, never in URLs or logs.
+- Default models, when `model` is empty: `qwen2.5-coder:7b` (Ollama), `gemini-2.5-flash`, `gpt-4.1-mini`. These are only defaults; any model the provider serves can be set.
+- Masking (R4) runs before any of them. With Gemini or OpenAI the masked context leaves the computer for that provider; the console's notes name the teacher and what it costs (plan, free, or API credits).
+
 Original design notes:
 - Adapters: `claude` (`claude -p`, default), `ollama`, `gemini`, `openai`.
 - Input: prompt, events, diff, analysis, level and language. Secrets are masked first (R4).
