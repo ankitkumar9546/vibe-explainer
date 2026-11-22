@@ -8,9 +8,10 @@ takes and turns it into a lesson you can follow: a timeline, the diff in plain w
 impact, a check of the agent's claims against the evidence, and a quiz, in Hinglish or English.
 
 Everything runs on your machine. Your project's own `.git` is never written to. Nothing is
-uploaded except to the teacher model: your own `claude` by default, or Ollama (local and free),
-Gemini or OpenAI if you choose (`vibe-explainer config set teacher ollama`; keys only from
-`GEMINI_API_KEY` / `OPENAI_API_KEY`, never saved). One exception: when a
+uploaded except to the teacher model. By default that is the same AI you code with, through its
+own CLI and your own login (`claude`, `cursor-agent`, `codex` or `gemini`). In the console's ⚙ you can
+pick your own model instead: Ollama (local and free), or Gemini / OpenAI / any OpenAI-style API with
+a key that stays on your computer. One exception: when a
 prompt adds a package, its name is looked up on the npm registry or PyPI for its licence and
 size (`vibe-explainer config set registry off` turns that off).
 

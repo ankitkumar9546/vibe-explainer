@@ -12,6 +12,9 @@ import { askSession, checkExplanation } from "./teacher/chat.js";
 import { detectCommands, sandboxSettings, allowSandbox, runInSandbox, removeSandbox, sandboxFile, applyEdit, snapshotFile, sweepSandboxes, safeRel } from "./sandbox.js";
 import { makePlayground, editTake, diffText } from "./teacher/playground.js";
 import { shadowGit } from "./snapshot.js";
+import { loadConfig, setConfig } from "./config.js";
+import { setKey, clearKey, keyStatus, KEY_PROVIDERS } from "./keys.js";
+import { availableClis, resolveAgentTeacher, TEACHERS, DEFAULT_MODELS } from "./teacher/adapters.js";
 
 const PREVIEWABLE = ["index.html", "public/index.html", "src/index.html"];
 
@@ -150,7 +153,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
         case "/api/session": {
           const session = readJson(path.join(store.sessionDir(projectId, sessionId), "session.json"));
           if (!session) return send(res, 404, { error: "no such session" });
-          return send(res, 200, { session, turns: turnsOf(store, projectId, sessionId), teacher: teacherName() });
+          return send(res, 200, { session, turns: turnsOf(store, projectId, sessionId), teacher: teacherName({ projectId, sessionId }) });
         }
         case "/api/turn": {
           const dir = store.turnDir(projectId, sessionId, turn);
@@ -239,7 +242,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
           try {
             if (url.pathname === "/api/sandbox/playground") {
               if (!makeTeacher) return send(res, 501, { ok: false, error: "the teacher is not available" });
-              const r = await makePlayground(store, { projectId, sessionId, turn }, { teacher: makeTeacher(), lang: body.lang === "en" ? "en" : "hi", testCommand: sandboxSettings(store, projectId).commands?.test ?? detectCommands(store.home, projectId, commit).test ?? null });
+              const r = await makePlayground(store, { projectId, sessionId, turn }, { teacher: makeTeacher({ projectId, sessionId }), lang: body.lang === "en" ? "en" : "hi", testCommand: sandboxSettings(store, projectId).commands?.test ?? detectCommands(store.home, projectId, commit).test ?? null });
               return send(res, r.ok ? 200 : 502, r);
             }
             const settings = sandboxSettings(store, projectId);
@@ -268,7 +271,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
               const before = snapshotFile(store.home, projectId, commit, safeRel(body.path)) ?? "";
               out.diff = diffText(before, String(body.content ?? ""));
               if (makeTeacher && out.diff) {
-                const take = await editTake(store, { projectId, sessionId, turn }, { teacher: makeTeacher(), lang: body.lang === "en" ? "en" : "hi", path: body.path, before, after: String(body.content ?? ""), results: r.results });
+                const take = await editTake(store, { projectId, sessionId, turn }, { teacher: makeTeacher({ projectId, sessionId }), lang: body.lang === "en" ? "en" : "hi", path: body.path, before, after: String(body.content ?? ""), results: r.results });
                 out.take = take;
               }
             }
@@ -276,6 +279,37 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
           } catch (err) {
             return send(res, 400, { ok: false, error: String(err.message ?? err) });
           } finally { running.delete(projectId); }
+        }
+        case "/api/settings": {
+          // the teacher setting; keys are only ever shown as their last 4 characters
+          if (req.method === "POST") {
+            const body = await readBody(req);
+            try {
+              for (const k of ["teacher", "model", "ollamaUrl", "openaiBaseUrl"]) if (typeof body[k] === "string") setConfig(store.home, k, body[k].trim());
+              if (body.key && KEY_PROVIDERS[body.key.provider]) {
+                if (body.key.clear === true) clearKey(store.home, body.key.provider);
+                else if (typeof body.key.value === "string" && body.key.value.trim()) setKey(store.home, body.key.provider, body.key.value);
+              }
+            } catch (err) { return send(res, 400, { ok: false, error: String(err.message ?? err) }); }
+          }
+          const cfg = loadConfig(store.home);
+          return send(res, 200, {
+            ok: true, teacher: cfg.teacher, model: cfg.model, ollamaUrl: cfg.ollamaUrl, openaiBaseUrl: cfg.openaiBaseUrl,
+            teachers: TEACHERS, defaults: DEFAULT_MODELS, available: availableClis(),
+            agentResolves: sessionId ? (() => { const s = readJson(path.join(store.sessionDir(projectId, sessionId), "session.json"), {}); return resolveAgentTeacher({ source: s.source, agent: s.agent }); })() : null,
+            keys: Object.fromEntries(Object.keys(KEY_PROVIDERS).map((p) => [p, keyStatus(store.home, p)])),
+          });
+        }
+        case "/api/settings/test": {
+          if (req.method !== "POST") return send(res, 405, { error: "POST only" });
+          if (!makeTeacher) return send(res, 501, { ok: false, error: "the teacher is not available" });
+          const t0 = Date.now();
+          let teacher = null;
+          try {
+            teacher = makeTeacher(sessionId ? { projectId, sessionId } : null);
+            const reply = String(await teacher.ask("This is a connection test. Reply with the single word OK and nothing else.")).trim();
+            return send(res, 200, { ok: true, teacher: teacher.name, via: teacher.via ?? null, reply: reply.slice(0, 200), ms: Date.now() - t0 });
+          } catch (err) { return send(res, 200, { ok: false, teacher: teacher?.name ?? null, via: teacher?.via ?? null, error: String(err.message ?? err).slice(0, 400), ms: Date.now() - t0 }); }
         }
         case "/api/chat":
         case "/api/explain-back": {
@@ -286,7 +320,7 @@ export function startServer(store, { staticDir, port = 4321, token = crypto.rand
           if (asking.has(key)) return send(res, 429, { error: "one question at a time" });
           asking.add(key);
           try {
-            const teacher = makeTeacher();
+            const teacher = makeTeacher({ projectId, sessionId });
             const r = url.pathname === "/api/chat"
               ? await askSession(store, { projectId, sessionId }, { teacher, lang, question: String(body.question ?? ""), focusTurn: Number(body.turn) || null,
                   history: Array.isArray(body.history) ? body.history.filter((m) => m && typeof m.t === "string").map((m) => ({ who: m.who === "me" ? "me" : "ai", t: m.t.slice(0, 2000) })) : [],

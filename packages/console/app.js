@@ -147,7 +147,7 @@ function rail() {
 
 function strip() {
   const sec = $("#strip");
-  if (!S.data || S.view === "record") { sec.hidden = true; return; }
+  if (!S.data || S.view !== "turn") { sec.hidden = true; return; }
   sec.hidden = false; sec.classList.toggle("mini", !S.stripOpen);
   const dur = duration(), row = { soch: 0, read: 1, edit: 2, run: 3 };
   const tr = $("#trace");
@@ -172,7 +172,7 @@ function strip() {
 
 function head() {
   const H = $("#head");
-  if (!S.data || S.view === "record") { H.innerHTML = ""; return; }
+  if (!S.data || S.view !== "turn") { H.innerHTML = ""; return; }
   const t = S.data.turn, ev = S.data.events.filter((e) => e.kind === "tool_end" || e.kind === "file_change").length;
   H.innerHTML = `<h1 class="prompt">${esc(t.prompt)}</h1>
     <div class="prompt-meta num">${t.status === "open" ? `<span class="livetag">● ${T(UI.now)}</span> · ` : ""}${ev} ${T(UI.steps)} · ${(t.files ?? []).length} ${T(UI.files)} · ${Math.round(duration())}${T(UI.sec)}</div>
@@ -180,7 +180,7 @@ function head() {
 }
 
 function nav() {
-  if (!S.data || S.view === "record") { $("#nav").innerHTML = ""; return; }
+  if (!S.data || S.view !== "turn") { $("#nav").innerHTML = ""; return; }
   if (guided()) { $("#nav").innerHTML = stepperNav(); return; }
   const tabs = ["live", "logs", "changes", "wiring", "impact", "play", "todo", "learn"], ic = { live: "t-live", logs: "t-logs", changes: "t-changes", wiring: "t-wiring", impact: "t-impact", play: "i-run", todo: "t-todo", learn: "t-seekho" };
   $("#nav").innerHTML = `<div class="tabs" role="tablist">${tabs.map((k) => `<button role="tab" data-tab="${k}" aria-selected="${S.tab === k}"><svg class="i"><use href="#${ic[k]}"/></svg><span>${T(UI.tabs[k])}</span></button>`).join("")}</div>`;
@@ -189,6 +189,7 @@ function nav() {
 function content() {
   const C = $("#content");
   if (!TOKEN) { C.innerHTML = `<div class="empty">${code(T(UI.noToken))}</div>`; return; }
+  if (S.view === "settings") { C.innerHTML = `<div class="panel">${settingsView()}</div>`; return; } // works before anything is recorded
   if (!S.projects.length) { C.innerHTML = `<div class="empty">${code(T(UI.noData))}</div>`; return; }
   if (S.view === "record") { C.innerHTML = `<div class="panel">${recordView()}</div>`; return; }
   if (!S.data) { C.innerHTML = `<div class="empty">${T(UI.noTurns)}</div>`; return; }
@@ -1060,6 +1061,107 @@ async function pgClick(b) {
 }
 
 
+/* ---------- Phase 11b: which AI teaches (⚙ settings) ---------- */
+const ST = {
+  head: { hi: "Lesson kaun likhe?", en: "Who writes the lessons?" },
+  lede: { hi: "Lesson, chat, sawaal aur playground isi AI se bante hain. Code ke secrets bhejne se pehle chhupaye jaate hain.", en: "Lessons, chat, questions and the playground all come from this AI. Secrets in the code are masked before anything is sent." },
+  agent: { hi: "Jis AI se code likhwa rahe ho, wahi", en: "The same AI you code with" },
+  agentSub: { hi: "Har session apne agent ka CLI use karta hai (Claude Code → claude, Cursor → cursor-agent, Codex → codex, Gemini → gemini). Tumhara apna login, koi key nahi. CLI na mile to claude.", en: "Each session uses its own agent's CLI (Claude Code → claude, Cursor → cursor-agent, Codex → codex, Gemini → gemini). Your own login, no key. If that CLI is missing, claude." },
+  own: { hi: "Apna model", en: "My own model" },
+  ownSub: { hi: "Ek hi AI har session ke liye: koi CLI, apne computer pe Ollama, ya API.", en: "One AI for every session: an agent CLI, Ollama on your computer, or an API." },
+  forThis: { hi: "Is session ke liye:", en: "For this session:" }, fallback: { hi: "installed nahi, isliye", en: "isn't installed, so" }, noneFound: { hi: "koi CLI nahi mila: 'Apna model' chuno", en: "no CLI found: pick 'My own model'" },
+  installed: { hi: "installed", en: "installed" }, missing: { hi: "nahi hai", en: "not found" },
+  provider: { hi: "Kaunsa", en: "Which" }, model: { hi: "Model", en: "Model" }, url: { hi: "Address", en: "Address" }, key: { hi: "API key", en: "API key" },
+  modelPh: { hi: "khaali = default", en: "empty = default" },
+  keySaved: { hi: "Saved", en: "Saved" }, keyEnv: { hi: "environment se", en: "from the environment" }, keyRemove: { hi: "Hatao", en: "Remove" },
+  keyNote: { hi: "Key sirf is computer pe `~/.vibe-explainer/keys.json` mein rehti hai (sirf tum padh sakte ho) aur sirf usi provider ko jaati hai.", en: "The key stays only on this computer in `~/.vibe-explainer/keys.json` (readable only by you) and goes only to that provider." },
+  apiNote: { hi: "Is option mein tumhare code ka (chhupaya hua) hissa us company ke server pe jaata hai.", en: "With this option the (masked) code is sent to that company's servers." },
+  save: { hi: "Save karo", en: "Save" }, saved: { hi: "Save ho gaya", en: "Saved" }, test: { hi: "Test karo", en: "Test it" }, testing: { hi: "Test chal raha hai…", en: "Testing…" },
+  testOk: { hi: "Chal raha hai", en: "Works" }, testBad: { hi: "Nahi chala", en: "Didn't work" },
+  back: { hi: "Wapas", en: "Back" },
+};
+const PROVIDERS = [
+  ["claude", { hi: "Claude Code CLI (claude)", en: "Claude Code CLI (claude)" }],
+  ["codex", { hi: "Codex CLI (codex)", en: "Codex CLI (codex)" }],
+  ["gemini-cli", { hi: "Gemini CLI (gemini)", en: "Gemini CLI (gemini)" }],
+  ["cursor", { hi: "Cursor CLI (cursor-agent)", en: "Cursor CLI (cursor-agent)" }],
+  ["ollama", { hi: "Ollama (is computer pe, free)", en: "Ollama (on this computer, free)" }],
+  ["gemini", { hi: "Gemini API (key chahiye)", en: "Gemini API (needs a key)" }],
+  ["openai", { hi: "OpenAI ya OpenAI-jaisa API (OpenRouter, Groq, LM Studio…)", en: "OpenAI or an OpenAI-style API (OpenRouter, Groq, LM Studio…)" }],
+];
+S.set = null; S.setDraft = null; S.setMsg = null; S.setTest = null;
+
+async function openSettings() {
+  S.view = "settings"; S.setMsg = null; S.setTest = null; all();
+  try { S.set = await api("/api/settings", { project: S.project, session: S.session }); } catch (err) { S.set = { error: String(err.message) }; }
+  S.setDraft = S.set.error ? null : { teacher: S.set.teacher, model: S.set.model, ollamaUrl: S.set.ollamaUrl, openaiBaseUrl: S.set.openaiBaseUrl, key: "" };
+  content();
+}
+function settingsView() {
+  const s = S.set, d = S.setDraft;
+  if (!s) return `<div class="empty"><span class="spin dark"></span></div>`;
+  if (s.error) return `<div class="empty">${esc(s.error)}</div>`;
+  const own = d.teacher !== "agent";
+  const kind = own ? d.teacher : "claude";
+  const cliOf = { claude: "claude", codex: "codex", "gemini-cli": "gemini", cursor: "cursor-agent" };
+  const ar = s.agentResolves;
+  const resolves = ar ? (ar.kind ? (ar.fallback ? `<code>${esc(ar.wanted)}</code> ${T(ST.fallback)} <code>${esc(ar.kind)}</code>` : `<code>${esc(ar.kind)}</code>`) : T(ST.noneFound)) : "";
+  const keyP = kind === "gemini" ? "gemini" : kind === "openai" ? "openai" : null, ks = keyP ? s.keys[keyP] : null;
+  const chips = Object.entries(cliOf).map(([k, cmd]) => `<span class="badge">${esc(cmd)} · ${s.available[k] ? T(ST.installed) : T(ST.missing)}</span>`).join(" ");
+  return `<h1 class="prompt">${T(ST.head)}</h1><p class="lede muted">${T(ST.lede)}</p>
+    <section class="card setcard">
+      <label class="setopt"><input type="radio" name="tmode" value="agent" ${own ? "" : "checked"}><span><b>${T(ST.agent)}</b><small>${T(ST.agentSub)}</small>${!own && ar ? `<small>${T(ST.forThis)} ${resolves}</small>` : ""}<small>${chips}</small></span></label>
+      <label class="setopt"><input type="radio" name="tmode" value="own" ${own ? "checked" : ""}><span><b>${T(ST.own)}</b><small>${T(ST.ownSub)}</small></span></label>
+      ${own ? `<div class="setfields pgallow">
+        <label>${T(ST.provider)} <select id="setProv">${PROVIDERS.map(([k, l]) => `<option value="${k}" ${k === kind ? "selected" : ""}>${esc(T(l))}${cliOf[k] && !s.available[k] ? ` (${T(ST.missing)})` : ""}</option>`).join("")}</select></label>
+        <label>${T(ST.model)} <input id="setModel" value="${esc(d.model)}" placeholder="${esc(s.defaults[kind] ? `${T(ST.modelPh)}: ${s.defaults[kind]}` : T(ST.modelPh))}"></label>
+        ${kind === "ollama" ? `<label>${T(ST.url)} <input id="setOllama" value="${esc(d.ollamaUrl)}" placeholder="http://127.0.0.1:11434"></label>` : ""}
+        ${kind === "openai" ? `<label>${T(ST.url)} <input id="setBase" value="${esc(d.openaiBaseUrl)}" placeholder="https://api.openai.com/v1"></label>` : ""}
+        ${keyP ? `<label>${T(ST.key)} <input id="setKey" type="password" autocomplete="off" value="${esc(d.key)}" placeholder="${ks ? `${ks.source === "env" ? `${T(ST.keyEnv)} (${esc(ks.name)})` : T(ST.keySaved)} ${esc(ks.hint)}` : (keyP === "gemini" ? "AIza…" : "sk-…")}"></label>
+          ${ks?.source === "saved" ? `<button class="ghost sm" id="setKeyRm">${T(ST.keyRemove)} (${esc(ks.hint)})</button>` : ""}
+          <p class="note2">${code(T(ST.keyNote))}</p><p class="note2">${T(ST.apiNote)}</p>` : ""}
+      </div>` : ""}
+      <div class="pgactions"><button class="primary sm" id="setSave"><svg class="i"><use href="#i-ok"/></svg>${T(ST.save)}</button>
+        <button class="ghost sm" id="setTest" ${S.setTest === "busy" ? "disabled" : ""}>${S.setTest === "busy" ? `<span class="spin dark"></span>${T(ST.testing)}` : `<svg class="i"><use href="#i-run"/></svg>${T(ST.test)}`}</button>
+        ${S.setMsg ? `<span class="${S.setMsg.ok ? "res-ok" : "res-x"}">${esc(S.setMsg.text)}</span>` : ""}</div>
+      ${S.setTest && S.setTest !== "busy" ? `<div class="predres ${S.setTest.ok ? "good" : "meh"}"><b>${S.setTest.ok ? T(ST.testOk) : T(ST.testBad)}</b><p><code>${esc(S.setTest.teacher ?? "")}</code>${S.setTest.via && S.setTest.via !== "agent" ? ` · ${esc(S.setTest.via)}` : ""} · ${Math.round((S.setTest.ms ?? 0) / 100) / 10}s</p>${S.setTest.ok ? `<p>${esc(S.setTest.reply)}</p>` : `<p class="err">${esc(S.setTest.error)}</p>`}</div>` : ""}
+    </section>
+    ${S.data ? `<p><button class="ghost" id="setBack">← ${T(ST.back)}</button></p>` : ""}`;
+}
+/** Keep what was typed when the form re-renders. */
+function settingsDraft() {
+  const d = S.setDraft; if (!d) return;
+  if ($("#setModel")) d.model = $("#setModel").value;
+  if ($("#setOllama")) d.ollamaUrl = $("#setOllama").value;
+  if ($("#setBase")) d.openaiBaseUrl = $("#setBase").value;
+  if ($("#setKey")) d.key = $("#setKey").value;
+}
+async function settingsClick(b) {
+  if (b.id === "setBtn") { await openSettings(); return true; }
+  if (S.view !== "settings") return false;
+  if (b.id === "setBack") { S.view = "turn"; all(); return true; }
+  if (b.id === "setSave" || b.id === "setKeyRm") {
+    settingsDraft();
+    const d = S.setDraft, keyP = d.teacher === "gemini" ? "gemini" : d.teacher === "openai" ? "openai" : null;
+    const body = { teacher: d.teacher, model: d.model, ollamaUrl: d.ollamaUrl, openaiBaseUrl: d.openaiBaseUrl };
+    if (keyP && b.id === "setKeyRm") body.key = { provider: keyP, clear: true };
+    else if (keyP && d.key.trim()) body.key = { provider: keyP, value: d.key.trim() };
+    try {
+      const r = await api("/api/settings", { project: S.project, session: S.session }, "POST", body);
+      if (r.ok) { S.set = r; d.key = ""; S.setMsg = { ok: true, text: T(ST.saved) }; S.teacher = null; }
+      else S.setMsg = { ok: false, text: r.error };
+    } catch (err) { S.setMsg = { ok: false, text: String(err.message) }; }
+    content(); return true;
+  }
+  if (b.id === "setTest") {
+    await settingsClick({ id: "setSave" });
+    S.setTest = "busy"; content();
+    try { S.setTest = await api("/api/settings/test", { project: S.project, session: S.session }, "POST", {}); } catch (err) { S.setTest = { ok: false, error: String(err.message) }; }
+    content(); return true;
+  }
+  return false;
+}
+
 function learn() {
   const t = S.data.turn, l = S.data.lesson;
   if (!l) {
@@ -1074,7 +1176,7 @@ function learn() {
     <p class="muted" style="font-size:13px">${T(UI.lessonMeta)}: ${esc(l.teacher)} · ${esc(l.level)}/${esc(l.lang)} · ${esc(new Date(l.createdAt).toLocaleString())}</p>`;
 }
 
-function all() { labels(); pickers(); rail(); head(); strip(); nav(); content(); chatRender(); $("#recBtn").setAttribute("aria-current", S.view === "record"); }
+function all() { labels(); pickers(); rail(); head(); strip(); nav(); content(); chatRender(); $("#recBtn").setAttribute("aria-current", S.view === "record"); $("#setBtn").setAttribute("aria-pressed", S.view === "settings"); }
 
 /* ---------- data flow ---------- */
 let stream = null;
@@ -1133,6 +1235,7 @@ document.addEventListener("click", async (e) => {
   const line = e.target.closest("[data-ask]");
   if (line && !e.target.closest("button,a")) { await askLine(line.dataset.ask, line.dataset.path ?? "", line.querySelector("span:nth-child(3)")?.textContent ?? ""); return; }
   const b = e.target.closest("button,a"); if (!b) return;
+  if (!STATIC && await settingsClick(b)) return;
   if (S.data && !STATIC && await pgClick(b)) return;
   if (b.id === "recBtn") { await openRecord(); return; }
   if (b.id === "chatFab") { S.chatOpen = true; chatRender(); setTimeout(() => $("#chatIn")?.focus(), 30); return; }
@@ -1189,6 +1292,7 @@ function pickNode(e) {
 document.addEventListener("click", (e) => { if (S.tab === "wiring") pickNode(e); });
 document.addEventListener("keydown", (e) => { if (S.tab === "wiring" && (e.key === "Enter" || e.key === " ") && e.target.closest?.("[data-node]")) { e.preventDefault(); pickNode(e); } });
 document.addEventListener("input", (e) => {
+  if (/^set(Model|Ollama|Base|Key)$/.test(e.target.id)) settingsDraft();
   if (e.target.id === "pgCode") pgState().code[pgState().file] = e.target.value;
   if (e.target.id === "chCode") pgState().ch.code = e.target.value;
   if (e.target.id === "eb") { const x = (S.eb[doneKey()] ??= {}); x.text = e.target.value; const btn = $("#ebBtn"); if (btn && !x.busy) btn.disabled = x.text.trim().length < 10; }
@@ -1201,6 +1305,8 @@ document.addEventListener("keydown", (e) => {
   if (line && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); line.click(); }
 });
 document.addEventListener("change", async (e) => {
+  if (e.target.name === "tmode" && S.setDraft) { settingsDraft(); S.setDraft.teacher = e.target.value === "agent" ? "agent" : (S.set.teacher !== "agent" ? S.set.teacher : "claude"); S.setMsg = null; content(); return; }
+  if (e.target.id === "setProv" && S.setDraft) { settingsDraft(); S.setDraft.teacher = e.target.value; S.setDraft.model = ""; S.setMsg = null; content(); return; }
   if (e.target.id === "pgPick") { const st = pgState(); st.file = e.target.value; await pgFile(st.file); content(); return; }
   if (e.target.id === "projectSel") { S.project = e.target.value; S.session = null; S.view = "turn"; await loadSessions(); }
   if (e.target.id === "sessionSel") { S.session = e.target.value; S.view = "turn"; await loadSession(); }
@@ -1230,6 +1336,7 @@ setInterval(() => { if (S.data?.turn.status === "open") { if (S.follow) S.cur = 
 labels();
 if (STATIC) {
   const tag = document.createElement("a");
+  document.querySelector("#setBtn").hidden = true;
   tag.className = "demotag"; tag.href = "https://github.com/ankitkumar9546/vibe-explainer";
   tag.textContent = S.lang === "hi" ? "Demo · asli recorded session" : "Demo · a real recorded session";
   document.querySelector(".mark").after(tag);

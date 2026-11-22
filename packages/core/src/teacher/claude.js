@@ -51,3 +51,6 @@ export function claudeTeacher({ home, model, timeoutMs = 240000, command = "clau
     },
   };
 }
+
+/** Shared by the other agent-CLI teachers (codex, gemini, cursor-agent). */
+export { run as runCli };

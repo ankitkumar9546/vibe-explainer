@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawn } from "node:child_process";
-import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, makeTeacher, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
+import { recordHook, Store, homeDir, projectIdFor, snapshotBefore, finishTurn, takeSnapshot, readJson, writeJson, loadConfig, setConfig, teachTurn, makeTeacher, teacherForSession, setKey, clearKey, keyStatus, startServer, shadowDir, ensureAnalysis, buildExport, startWatch } from "../../core/src/index.js";
 import { initProject } from "../src/init.js";
 
 const BIN = fileURLToPath(import.meta.url);
@@ -59,9 +59,10 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
         [--turn N] [--session ID] [--json] [--offline]
   vibe-explainer export [dir] --kind pr|commit|note [--session ID] [--lang hi|en]
                                      ready-made text from the newest session
-  vibe-explainer config [set KEY VALUE]   teacher (claude|ollama|gemini|openai), mode (manual|auto), level, lang,
-                                     model, ollamaUrl, openaiBaseUrl, registry (on|off)
-                                     keys: GEMINI_API_KEY / OPENAI_API_KEY in the environment, never in config
+  vibe-explainer config [set KEY VALUE]   teacher (agent|claude|codex|gemini-cli|cursor|ollama|gemini|openai),
+                                     mode (manual|auto), level, lang, model, ollamaUrl, openaiBaseUrl, registry (on|off)
+  vibe-explainer key gemini|openai   save an API key on this computer (typed in, not on the command line)
+  vibe-explainer key gemini|openai --remove
   vibe-explainer open [dir] [--port N] [--no-browser] [--detach]   open the console in your browser
   vibe-explainer watch [dir] [--agent NAME] [--quiet SECONDS]
                                      record an agent with no hooks (Cursor, Copilot…) by watching files
@@ -114,9 +115,11 @@ switch (cmd) {
     const ids = pickTurn(store, dirArg());
     const session = { id: ids.sessionId }, turn = ids.turn, projectId = ids.projectId;
     const level = flag("level") ?? cfg.level, lang = flag("lang") ?? cfg.lang;
-    console.log(`Teaching turn ${turn} of session ${session.id} (${level}, ${lang}) with ${cfg.teacher}…`);
+    console.log(`Teaching turn ${turn} of session ${session.id} (${level}, ${lang}) with ${teacherForSession(store, cfg, { projectId, sessionId: session.id }).name}…`);
     const t0 = Date.now();
-    const res = await teachTurn(store, { projectId, sessionId: session.id, turn }, { teacher: makeTeacher(cfg, { home: store.home }), level, lang, online: cfg.registry === "on" });
+    const teacher = teacherForSession(store, cfg, { projectId, sessionId: session.id });
+    if (teacher.via && teacher.via !== "agent") console.log(`Teacher: ${teacher.via}`);
+    const res = await teachTurn(store, { projectId, sessionId: session.id, turn }, { teacher, level, lang, online: cfg.registry === "on" });
     if (!res.ok) { console.error(`Lesson failed: ${res.error}`); process.exit(1); }
     const l = res.lesson;
     console.log(`\n${l.title}\n${l.summary}\n`);
@@ -184,7 +187,7 @@ switch (cmd) {
         const sum = info.files.map((f) => `${f.path} +${f.add ?? "?"} -${f.del ?? "?"}`).join(", ");
         console.log(`turn ${info.turn}: ${info.files.length} file${info.files.length === 1 ? "" : "s"} (${sum})`);
         if (loadConfig(store.home).mode === "auto") {
-          teaching = teaching.then(() => teachTurn(store, info, { teacher: makeTeacher(cfg, { home: store.home }), level: cfg.level, lang: cfg.lang, online: cfg.registry === "on" }))
+          teaching = teaching.then(() => teachTurn(store, info, { teacher: teacherForSession(store, loadConfig(store.home), info), level: cfg.level, lang: cfg.lang, online: cfg.registry === "on" }))
             .then((r) => console.log(r.ok ? `  lesson ready for turn ${info.turn}` : `  lesson failed: ${r.error}`)).catch(() => {});
         }
       },
@@ -202,6 +205,19 @@ A prompt ends after ${quietMs / 1000}s with no changes. Type what you asked the 
     process.stdin.on("end", () => { /* no terminal: keep watching until a signal */ });
     await new Promise(() => {});
     break;
+  }
+  case "key": {
+    const store = new Store();
+    const provider = args[0];
+    if (!["gemini", "openai"].includes(provider)) { console.error("Usage: vibe-explainer key gemini|openai [--remove]"); process.exit(1); }
+    if (args.includes("--remove")) { clearKey(store.home, provider); console.log(`Removed the saved ${provider} key.`); break; }
+    // read the key from stdin, so it never lands in the shell's history
+    if (process.stdin.isTTY) process.stdout.write(`Paste your ${provider} API key and press Enter: `);
+    const line = await new Promise((resolve) => { let b = ""; process.stdin.setEncoding("utf8"); process.stdin.on("data", (d) => { b += d; if (b.includes("\n")) { process.stdin.pause(); resolve(b.split("\n")[0]); } }); process.stdin.on("end", () => resolve(b)); });
+    try { setKey(store.home, provider, line); } catch (err) { console.error(String(err.message)); process.exit(1); }
+    const st = keyStatus(store.home, provider);
+    console.log(`Saved (${st.hint}) in ${path.join(store.home, "keys.json")}, readable only by you.${st.source === "env" ? ` Note: ${st.name} is set in your environment and wins over the saved key.` : ""}`);
+    process.exit(0);
   }
   case "baseline": {
     try {
@@ -257,10 +273,10 @@ A prompt ends after ${quietMs / 1000}s with no changes. Type what you asked the 
     const staticDir = path.resolve(path.dirname(BIN), "..", "..", "console");
     const srv = await startServer(store, {
       staticDir, port: Number(flag("port")) || 4321,
-      onExplain: (ids, o) => teachTurn(store, ids, { teacher: makeTeacher(loadConfig(store.home), { home: store.home }), level: o.level, lang: o.lang, online: loadConfig(store.home).registry === "on" }),
+      onExplain: (ids, o) => teachTurn(store, ids, { teacher: teacherForSession(store, loadConfig(store.home), ids), level: o.level, lang: o.lang, online: loadConfig(store.home).registry === "on" }),
       online: () => loadConfig(store.home).registry === "on",
-      makeTeacher: () => makeTeacher(loadConfig(store.home), { home: store.home, timeoutMs: 180000 }),
-      teacherName: () => { const c = loadConfig(store.home); return c.teacher === "claude" ? "claude" : `${c.teacher}${c.model ? `:${c.model}` : ""}`; },
+      makeTeacher: (ids) => (ids ? teacherForSession(store, loadConfig(store.home), ids, { timeoutMs: 180000 }) : makeTeacher(loadConfig(store.home), { home: store.home, timeoutMs: 180000 })),
+      teacherName: (ids) => teacherForSession(store, loadConfig(store.home), ids).name,
       autoTeach: () => loadConfig(store.home).mode === "auto" ? { level: loadConfig(store.home).level, lang: loadConfig(store.home).lang } : null,
     });
     writeJson(serverFile, { port: srv.port, token: srv.token, pid: process.pid, url: srv.url, startedAt: new Date().toISOString() });

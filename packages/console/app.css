@@ -577,3 +577,19 @@ details[open]>summary .i{transform:rotate(90deg)}
 .pgchecks .runc{background:var(--chip)}
 @media (max-width:760px){.pgchecks,.cmpgrid{grid-template-columns:1fr}}
 @media (max-width:900px){.overviewbtn{min-width:130px;width:auto;margin-top:0}.stepchip{min-width:0;padding:6px 2px}.stepchip > span:last-child{white-space:normal;text-align:center;line-height:1.15}}
+
+/* Phase 11b: the AI teacher setting */
+.setcard{max-width:760px;display:flex;flex-direction:column;gap:12px}
+.setopt{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border:1px solid var(--line);border-radius:16px;cursor:pointer}
+.setopt:has(input:checked){border-color:var(--action);background:var(--action-wash)}
+.setopt input{margin-top:4px;accent-color:var(--action)}
+.setopt b{display:block;font:800 17px var(--head)}
+.setopt small{display:block;color:var(--ink-2);font-size:14px;font-weight:600;margin-top:4px;line-height:1.5}
+.setfields{display:flex;flex-direction:column;gap:4px;padding:4px 2px}
+.setfields select{font:600 14px var(--sans);border:1.5px solid var(--line-2);border-radius:10px;padding:6px 10px;background:var(--field);color:var(--ink);max-width:420px;flex:1}
+.setfields label{max-width:560px}
+.setfields input{max-width:none}
+#setBtn[aria-pressed="true"]{background:var(--action);color:var(--on-action)}
+.setfields > .ghost{align-self:flex-start}
+.setfields label{flex-wrap:wrap}
+.setfields select,.setfields input{min-width:0;width:100%;flex:1 1 200px}

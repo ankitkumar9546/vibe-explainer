@@ -2,6 +2,24 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-22 (later): Phase 11b, choose the AI (Ankit's ask)
+
+- Ankit wanted an option: by default the same AI you code with, or your own model. He chose:
+  - keys **saved locally**;
+  - **Cursor, Codex and Gemini CLI** as agent teachers, besides claude.
+- Built:
+  - `teacher: agent` is the new default. It resolves per session (`resolveAgentTeacher`, `teacherForSession`) and falls back to claude.
+  - `teacher/agentcli.js`: codex, gemini-cli, cursor.
+  - `keys.js`: `keys.json` is owner-only; the environment wins; only the last 4 characters are shown.
+  - `/api/settings` and `/settings/test`.
+  - CLI `key gemini|openai [--remove]`, which reads the key from stdin so it stays out of shell history.
+  - The ⚙ panel in the console.
+- **Checked:**
+  - `npm test`: 61/61. New tests cover agent resolution and fallback; the CLI calls (prompt on stdin; codex's last-message file); keys (env wins, hint only, removed file); and settings never returning a key.
+  - Driven in Edge over CDP: "the same AI" resolved to claude for a watch session, and **Test answered OK from the real claude (7.4 s)**. Own model → OpenAI-style at 127.0.0.1:9 with a fake key: it saved as "…wxyz", Test showed "not reachable", the key was removed and the file deleted. `icacls` on keys.json shows only `MORTIS\Ankit:(F)`.
+  - Fixed on the way: the ⚙ icon looked like the theme's sun; a long provider name widened the page to 519 px on a phone; a failed test didn't name the teacher.
+- **Not checked:** codex, gemini and cursor-agent themselves (none is installed here).
+
 ## 2026-11-22: Phase 11, teacher adapters
 
 - `core/src/teacher/adapters.js`: `ollamaTeacher`, `geminiTeacher`, `openaiTeacher` (works with any OpenAI-compatible base URL) and `makeTeacher(config)`. The CLI and server now go through `makeTeacher` everywhere: lessons, chat, explain-back, playground and watch.
