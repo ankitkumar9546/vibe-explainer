@@ -66,6 +66,7 @@ const HELP = `vibe-explainer: see what your AI coding agent did, explained.
   vibe-explainer open [dir] [--port N] [--no-browser] [--detach]   open the console in your browser
   vibe-explainer watch [dir] [--agent NAME] [--quiet SECONDS]
                                      record an agent with no hooks (Cursor, Copilot…) by watching files
+  vibe-explainer mcp                 MCP server on stdio: "what changed yesterday?" from any MCP app
   vibe-explainer hook                (used by Claude Code; reads a hook payload on stdin)
 `;
 
@@ -217,6 +218,12 @@ A prompt ends after ${quietMs / 1000}s with no changes. Type what you asked the 
     try { setKey(store.home, provider, line); } catch (err) { console.error(String(err.message)); process.exit(1); }
     const st = keyStatus(store.home, provider);
     console.log(`Saved (${st.hint}) in ${path.join(store.home, "keys.json")}, readable only by you.${st.source === "env" ? ` Note: ${st.name} is set in your environment and wins over the saved key.` : ""}`);
+    process.exit(0);
+  }
+  case "mcp": {
+    // the MCP server on stdio (the same one the plugin starts)
+    const { serveStdio } = await import("../../mcp/src/server.js");
+    await serveStdio(new Store());
     process.exit(0);
   }
   case "baseline": {

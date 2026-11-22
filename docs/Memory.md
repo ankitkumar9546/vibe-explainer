@@ -2,6 +2,15 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-22 (evening): Phase 12, MCP server
+
+- `packages/mcp`: a hand-written stdio MCP server, with no SDK because plugin installs have no `npm install`. Tools: `recent_changes`, `get_turn`, `search`, `open_todos`, `list_projects`. It is declared in `plugin.json` `mcpServers` and available as `vibe-explainer mcp`. `claude plugin validate` passes.
+- **Checked:**
+  - `npm test`: 66/66. New tests: local-day windows (yesterday, a date, last_24_hours); the protocol handshake, notifications and errors; `recent_changes('yesterday')` returns exactly yesterday's prompt; get_turn, search and open_todos; a planted key masked; a real stdio child answering line by line, with nothing else on stdout.
+  - Real: `claude -p` as the MCP client on a store merged from the Phase 6, 9 and 10 scratch projects. "What did my AI coding agents change yesterday?" was answered in Hinglish, per project, in 16 s, including an `innerHTML` security note found on demand.
+- Bug found by the tests, then fixed: `since: "2026-11-14"` was turned into `2026_11_14` before the date check.
+- **Next:** Phase 13, release (npm publish, tagged releases, launch posts). It needs Ankit: the final name, and an npm account.
+
 ## 2026-11-22 (later): Phase 11b, choose the AI (Ankit's ask)
 
 - Ankit wanted an option: by default the same AI you code with, or your own model. He chose:

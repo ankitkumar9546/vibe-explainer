@@ -61,6 +61,10 @@ node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson aft
 
 Use either the plugin or `init` in a project, not both, or every step is recorded twice.
 
+**Ask from any MCP app:** the plugin also starts an MCP server, so in Claude Code you can ask *"what
+changed yesterday?"* or *"what still needs checking?"*. For another MCP app (Claude Desktop, Cursor…),
+add a server with the command `node /path/to/vibe-explainer/packages/mcp/bin/vibe-explainer-mcp.js`.
+
 **Other agents (Cursor, Copilot, Aider…):** run `vibe-explainer watch /path/to/project --agent cursor` in a
 terminal while the agent works. Each burst of edits becomes a prompt with a diff and a lesson. Type what you
 asked the agent there to name it.

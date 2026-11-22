@@ -1,0 +1,11 @@
+{
+  "name": "@vibe-explainer/mcp",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP server: ask what your AI coding agent changed, from vibe-explainer's local record.",
+  "main": "src/server.js",
+  "exports": { ".": "./src/server.js", "./tools": "./src/tools.js" },
+  "bin": { "vibe-explainer-mcp": "bin/vibe-explainer-mcp.js" },
+  "engines": { "node": ">=22" }
+}

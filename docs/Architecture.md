@@ -24,7 +24,7 @@ thin ways into it.
 | `packages/core` | recorder, store, snapshot, analyzer, teacher, sandbox, server | Node built-ins only where possible |
 | `packages/cli` | the `vibe-explainer` command: `hook`, `init`, `open`, `watch`, `explain`, `config` | core |
 | `packages/console` | the browser UI (built from the approved mockup) | none at runtime |
-| `packages/mcp` | MCP server (Phase 12) | core, `@modelcontextprotocol/sdk` |
+| `packages/mcp` | MCP server (Phase 12, built 11-22) | core only (no SDK: see §4b) |
 | `plugin/` | Claude Code plugin: hooks, slash commands, skill | cli |
 
 Language: JavaScript (ES modules) with JSDoc types. There is no build step for core and cli,
@@ -176,6 +176,15 @@ Each one runs `vibe-explainer hook`, which reads the JSON payload on stdin.
 
 The transcript path arrives in every payload (`transcript_path`). The recorder stores it. The
 teacher reads the agent's thinking and final reply from it.
+
+## 4b. MCP server (`packages/mcp`), Phase 12 (built 11-22)
+- **No SDK (changed from the plan).** A plugin install has no `npm install`, so the stdio transport is written by hand (`src/server.js`): newline-delimited JSON-RPC 2.0. It handles `initialize` (protocol versions 2025-06-18, 2025-03-26 and 2024-11-05; it answers with the client's version when supported), `ping`, `tools/list` and `tools/call`. Notifications get no answer; unknown methods get -32601. Requests are answered in order. stdout carries protocol messages only.
+- Tools (`src/tools.js`, all `readOnlyHint`, with text + `structuredContent`):
+  - `recent_changes {since, until, project}`: `since` takes today, yesterday, last_N_hours/days, a date or an ISO time, in the user's local time.
+  - `get_turn {project, session (a prefix is fine), turn}`: steps, lesson, analysis, to-dos and the diff, masked.
+  - `search {query}`, `open_todos {since}` and `list_projects`.
+- The analysis is made on demand (offline, up to 40 turns) when a tool needs callers or security notes. It is cached in the store like the console's, and is the only write.
+- How it starts: the plugin's `plugin.json` `mcpServers` (`node ${CLAUDE_PLUGIN_ROOT}/packages/mcp/bin/vibe-explainer-mcp.js`), `vibe-explainer mcp`, or any MCP app's config pointing at that file.
 
 ## 5. Data flow for one turn
 
