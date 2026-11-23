@@ -32,10 +32,10 @@ jobs:
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish dist/vibe-explainer-*.tgz --provenance --access public
+        run: npm publish ./dist/vibe-explainer-*.tgz --provenance --access public
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           node scripts/pack-npm.mjs --notes "$GITHUB_REF_NAME" > notes.md
-          gh release create "$GITHUB_REF_NAME" dist/vibe-explainer-*.tgz --title "vibe-explainer $GITHUB_REF_NAME" --notes-file notes.md
+          gh release create "$GITHUB_REF_NAME" ./dist/vibe-explainer-*.tgz --title "vibe-explainer $GITHUB_REF_NAME" --notes-file notes.md
