@@ -2,6 +2,15 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-23: v0.1.0 released
+
+- Tag `v0.1.0` → `release.yml` → **vibe-explainer@0.1.0 on npm** (provenance) and the GitHub release with the tarball and CHANGELOG notes. README now installs from npm (`npm install -g vibe-explainer`, MCP via `npx -y vibe-explainer mcp`).
+- Two failures fixed on the way: `npm publish dist/vibe-explainer-0.1.0.tgz` was read as a GitHub `user/repo` (now `./dist/…`); the first token lacked the 2FA bypass and npm asked for an OTP (EOTP). Ankit made a new granular token with the bypass and replaced the `NPM_TOKEN` secret; the run was re-run, no new tag.
+- npm now holds a brand-new package as a **staged release**: the registry showed only a `0.0.0-stage` placeholder until it was approved; then `latest` became 0.1.0.
+- Checked from npm: `npm install -g vibe-explainer@0.1.0` into a scratch prefix on D:, then `--version`, `vibe-explainer-mcp` initialize, and `open` serving the console.
+- A token was once pasted into chat; Ankit was told to delete it on npm (all old tokens deleted when the new one was made).
+- **Next, by Ankit:** the launch posts in `docs/Launch.md`.
+
 ## 2026-11-22 (night): Phase 13, release (built; first tag waits)
 
 - Ankit kept the name **vibe-explainer**; on npm, `vibe-explainer` and the `@vibe-explainer` names were all free (404) on 11-22.
