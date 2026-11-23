@@ -50,20 +50,20 @@ confirm.
 ## Without the plugin (CLI)
 
 ```bash
-git clone https://github.com/ankitkumar9546/vibe-explainer && cd vibe-explainer
-node packages/cli/bin/vibe-explainer.js init /path/to/project     # hooks for one project
-node packages/cli/bin/vibe-explainer.js open /path/to/project     # the console
-node packages/cli/bin/vibe-explainer.js analyze /path/to/project      # callers, packages, security notes
-node packages/cli/bin/vibe-explainer.js explain /path/to/project --lang en
-node packages/cli/bin/vibe-explainer.js export /path/to/project --kind pr   # or commit, note
-node packages/cli/bin/vibe-explainer.js config set mode auto      # a lesson after every prompt
+npm install -g vibe-explainer
+vibe-explainer init /path/to/project      # hooks for one project
+vibe-explainer open /path/to/project      # the console
+vibe-explainer analyze /path/to/project   # callers, packages, security notes
+vibe-explainer explain /path/to/project --lang en
+vibe-explainer export /path/to/project --kind pr   # or commit, note
+vibe-explainer config set mode auto       # a lesson after every prompt
 ```
 
 Use either the plugin or `init` in a project, not both, or every step is recorded twice.
 
 **Ask from any MCP app:** the plugin also starts an MCP server, so in Claude Code you can ask *"what
 changed yesterday?"* or *"what still needs checking?"*. For another MCP app (Claude Desktop, Cursor…),
-add a server with the command `node /path/to/vibe-explainer/packages/mcp/bin/vibe-explainer-mcp.js`.
+add a server with the command `npx -y vibe-explainer mcp` (or `vibe-explainer-mcp` after `npm install -g`).
 
 **Other agents (Cursor, Copilot, Aider…):** run `vibe-explainer watch /path/to/project --agent cursor` in a
 terminal while the agent works. Each burst of edits becomes a prompt with a diff and a lesson. Type what you
