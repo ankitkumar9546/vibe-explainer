@@ -10,6 +10,9 @@ import { execFileSync } from "node:child_process";
 export const DEFAULT_EXCLUDES = [
   ".git/", "node_modules/", ".venv/", "venv/", "__pycache__/", "dist/", "build/", ".next/", ".nuxt/",
   ".turbo/", ".cache/", "coverage/", "target/", ".gradle/", ".idea/", "*.log",
+  // Tool caches and agents' scratch copies: they change all the time and are never the user's code.
+  ".claude/worktrees/", ".pytest_cache/", ".mypy_cache/", ".ruff_cache/", ".tox/", ".astro/", ".svelte-kit/",
+  ".parcel-cache/", ".expo/", ".wrangler/",
 ];
 
 const ID = {
@@ -32,8 +35,22 @@ function git(gitDir, workTree, args, opts = {}) {
       cwd: workTree, env, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "pipe"], ...opts,
     });
   } catch (err) {
+    if (opts.okStatus?.includes(err.status)) return String(err.stdout ?? "");
     throw new SnapshotError(`git ${args[0]} failed: ${String(err.stderr || err.message).trim()}`);
   }
+}
+
+/**
+ * Which of these paths (relative to the project) a snapshot leaves out: the project's .gitignore files,
+ * its .git/info/exclude and DEFAULT_EXCLUDES. One git call. Needs the shadow repo (any snapshot made it).
+ * @returns {Set<string>}
+ */
+export function ignoredPaths(home, projectId, workTree, rels) {
+  if (!rels.length) return new Set();
+  const out = git(shadowDir(home, projectId), workTree, ["check-ignore", "-z", "--stdin"], {
+    input: rels.join("\0") + "\0", stdio: ["pipe", "pipe", "pipe"], okStatus: [1], // 1 = none of them is ignored
+  });
+  return new Set(out.split("\0").filter(Boolean));
 }
 
 /** Run git against a project's shadow repo (read-only uses: show, grep, cat-file). */

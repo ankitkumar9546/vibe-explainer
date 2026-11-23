@@ -1,6 +1,6 @@
 {
   "name": "vibe-explainer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Records what Claude Code does in your project and explains it like a teacher: timeline, diff in plain words, claims checked against evidence, impact, quiz. Ask it what changed yesterday (MCP). Everything stays on your machine.",
   "author": {
     "name": "Ankit Kumar"

@@ -2,6 +2,13 @@
 
 What has actually been built, newest first. Update this before ending a session.
 
+## 2026-11-23 (later): 0.1.1, `watch` on a real project
+
+- Ankit tried 0.1.0 on his real work: `watch` on D:\DECKpek (seven Claude Code sessions in Antigravity, started before any hooks) and `init` on a small try project (D:\vx-try). Installed from npm into `D:\tools\vibe-explainer` (his npm global prefix is on C:).
+- **Bug:** `watch` printed 1,267 "changed" lines and closed no turn. Subagent worktrees (`.claude/worktrees/`), `.pytest_cache`, `.astro` and the gitignored `.impeccable/review` changed every few seconds, so the folder never went quiet for 8 s. Worktrees and caches would also have gone into the snapshots.
+- **Fix:** `DEFAULT_EXCLUDES` gained the tool caches and `.claude/worktrees/`. Watch drops a change that `git check-ignore` on the shadow repo says is ignored (`ignoredPaths`, cached per path). `sed -i` temp files are skipped too.
+- **Checked:** `npm test` 70/70 (new: ignored files report nothing, make no turn and don't appear in a real turn; a changed `.gitignore` is asked again). Real: the fixed watch on D:\DECKpek for 40 s, with a scratch store, closed a turn of two files (`docs/Memory.md +8`, `docs/Roadmap.md +4 -2`) written by one of his sessions.
+
 ## 2026-11-23: v0.1.0 released
 
 - Tag `v0.1.0` → `release.yml` → **vibe-explainer@0.1.0 on npm** (provenance) and the GitHub release with the tarball and CHANGELOG notes. README now installs from npm (`npm install -g vibe-explainer`, MCP via `npx -y vibe-explainer mcp`).

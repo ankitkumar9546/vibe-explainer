@@ -5,11 +5,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import { FORMAT_VERSION, readJson, writeJson } from "./store.js";
-import { takeSnapshot, DEFAULT_EXCLUDES } from "./snapshot.js";
+import { takeSnapshot, ignoredPaths, DEFAULT_EXCLUDES } from "./snapshot.js";
 import { finishTurn } from "./turns.js";
 
-const SKIP = new RegExp(`(^|/)(${DEFAULT_EXCLUDES.filter((x) => x.endsWith("/")).map((x) => x.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(/|$)|(^|/)\\.vibe-explainer(/|$)|~$|\\.sw[px]$|\\.tmp(\\.[\\w.-]*)?$|___jb_(tmp|old)___$|\\.crswap$|(^|/)\\.DS_Store$`);
-// ↑ editor and agent temp files: vim swaps, atomic-save "x.js.tmp.1234.abcd", JetBrains, Chrome's .crswap
+const SKIP = new RegExp(`(^|/)(${DEFAULT_EXCLUDES.filter((x) => x.endsWith("/")).map((x) => x.slice(0, -1).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})(/|$)|(^|/)\\.vibe-explainer(/|$)|~$|\\.sw[px]$|\\.tmp(\\.[\\w.-]*)?$|___jb_(tmp|old)___$|\\.crswap$|(^|/)sed[A-Za-z0-9]{6}$|(^|/)\\.DS_Store$`);
+// ↑ editor and agent temp files: vim swaps, atomic-save "x.js.tmp.1234.abcd", JetBrains, Chrome's .crswap, sed -i's "sedAb12Cd"
 
 /** Paths the watcher reacts to: no git internals, dependency or build folders, or editor temp files. */
 export function watchedPath(rel) {
@@ -36,6 +36,23 @@ export function startWatch(store, { dir, agent = "agent", quietMs = 8000, sessio
   let last = takeSnapshot({ home: store.home, projectId, workTree: cwd, ref: `refs/vibe-explainer/${sid}/0-after`, message: "watch baseline" });
   let pending = null; // { firstTs, lastTs, changes: Map<rel, ts> }
   let label = null, timer = null, busy = false, stopped = false;
+
+  // Files the snapshot leaves out (.gitignore and friends) must not start a turn or keep one open:
+  // a cache folder that is written to every second would otherwise never let the folder go quiet.
+  // One git call per new path; a path under a folder already known to be ignored needs none.
+  const ignoreCache = new Map();
+  const ignored = (rel) => {
+    if (/(^|\/)\.gitignore$/.test(rel)) { ignoreCache.clear(); return false; }
+    const parts = rel.split("/");
+    for (let i = 1; i < parts.length; i++) if (ignoreCache.get(parts.slice(0, i).join("/")) === true) return true;
+    if (!ignoreCache.has(rel)) {
+      if (ignoreCache.size > 20000) ignoreCache.clear();
+      let v = false;
+      try { v = ignoredPaths(store.home, projectId, cwd, [rel]).size > 0; } catch { /* unsure: watch it */ }
+      ignoreCache.set(rel, v);
+    }
+    return ignoreCache.get(rel);
+  };
 
   const flush = () => {
     clearTimeout(timer); timer = null;
@@ -66,7 +83,7 @@ export function startWatch(store, { dir, agent = "agent", quietMs = 8000, sessio
   const onEvent = (_type, filename) => {
     if (stopped || !filename) return;
     const rel = String(filename).replace(/\\/g, "/");
-    if (!watchedPath(rel)) return;
+    if (!watchedPath(rel) || ignored(rel)) return;
     const ts = now();
     pending ??= { firstTs: ts, lastTs: ts, changes: new Map() };
     pending.lastTs = ts;

@@ -11,7 +11,7 @@ const fakeWatch = () => ({ close() {}, on() {} });
 
 test("watchedPath skips git, dependency, build and editor temp paths", () => {
   for (const p of ["src/a.js", "README.md", "app/views/x.html"]) assert.equal(watchedPath(p), true, p);
-  for (const p of [".git/index", "node_modules/x/y.js", "dist/a.js", "src/__pycache__/a.pyc", "a.js~", ".a.js.swp", "calc.py.tmp.12796.b7c5b099a088", "x.js___jb_tmp___", ""]) assert.equal(watchedPath(p), false, p);
+  for (const p of [".git/index", "node_modules/x/y.js", "dist/a.js", "src/__pycache__/a.pyc", "a.js~", ".a.js.swp", "calc.py.tmp.12796.b7c5b099a088", "x.js___jb_tmp___", "docs/sedLHi8Wq", ""]) assert.equal(watchedPath(p), false, p);
 });
 
 test("changes become a turn: before = the baseline, diff, file events, and the typed prompt", () => {
@@ -78,5 +78,37 @@ test("a real fs.watch picks up an edit and closes the turn after the quiet time"
   w(proj, "x.py", "print(2)\n");
   const info = await Promise.race([got, new Promise((_, rej) => setTimeout(() => rej(new Error("no turn within 8s")), 8000))]);
   assert.deepEqual(info.files.map((f) => [f.path, f.add, f.del]), [["x.py", 1, 1]]);
+  wt.stop();
+});
+
+test("tool caches, agents' worktrees and .gitignore'd files never start or hold open a turn", () => {
+  for (const p of [".claude/worktrees/agent-1/src/a.js", ".pytest_cache/v/cache/x", "site/.astro/collections/a.json", "app/.expo/x"]) assert.equal(watchedPath(p), false, p);
+  assert.equal(watchedPath(".claude/settings.json"), true, "only the worktrees folder of .claude is skipped");
+
+  const home = tmp("vx-home-"), proj = tmp("vx-watch3-");
+  w(proj, ".gitignore", ".impeccable/review/\n*.secret\n");
+  w(proj, "src/a.js", "1\n");
+  w(proj, ".impeccable/review/slices/s.json", "{}");
+  const store = new Store({ home });
+  const seen = [];
+  const wt = startWatch(store, { dir: proj, quietMs: 60000, watchFn: fakeWatch, onChange: (r) => seen.push(r) });
+
+  w(proj, ".impeccable/review/slices/s.json", "{\"n\":2}"); wt.change("change", ".impeccable/review/slices/s.json");
+  wt.change("change", ".impeccable/review"); // the folder event Windows sends
+  w(proj, "x.secret", "k"); wt.change("rename", "x.secret");
+  assert.deepEqual(seen, [], "ignored changes are not even reported");
+  assert.equal(wt.flush(), null, "and make no turn");
+
+  w(proj, "src/a.js", "2\n"); wt.change("change", "src/a.js");
+  wt.change("change", ".impeccable/review/slices/s.json");
+  const info = wt.flush();
+  assert.deepEqual(info.files.map((f) => f.path), ["src/a.js"]);
+  const ev = store.readEvents(wt.projectId, wt.sessionId).filter((e) => e.kind === "file_change").map((e) => e.target);
+  assert.deepEqual(ev, ["src/a.js"]);
+
+  // a changed .gitignore is a real change, and what it ignores is asked again
+  w(proj, ".gitignore", ".impeccable/review/\n"); wt.change("change", ".gitignore");
+  w(proj, "x.secret", "k2"); wt.change("change", "x.secret");
+  assert.deepEqual(wt.flush().files.map((f) => f.path).sort(), [".gitignore", "x.secret"]);
   wt.stop();
 });

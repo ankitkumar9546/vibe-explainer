@@ -2,6 +2,14 @@
 
 All notable changes. Versions follow [semver](https://semver.org); while it is 0.x, a minor version may change the store format.
 
+## 0.1.1
+
+**`watch` on a real project**
+- Tool caches and agents' scratch copies are no longer recorded or snapshotted: `.claude/worktrees/` (Claude Code's subagent worktrees), `.pytest_cache/`, `.mypy_cache/`, `.ruff_cache/`, `.tox/`, `.astro/`, `.svelte-kit/`, `.parcel-cache/`, `.expo/`, `.wrangler/`.
+- Files your `.gitignore` ignores no longer start a turn or keep one open. Before, a cache written every few seconds meant the folder never went quiet, so `watch` never closed a turn.
+- `sed -i` temp files (`sedAb12Cd`) are skipped like other editor temp files.
+- After upgrading, the first prompt in a project that had one of those folders may show them as deleted once, because its "before" snapshot still held them.
+
 ## 0.1.0 (first release)
 
 The first public release: everything an AI coding agent does in your project is recorded on your machine and explained like a teacher.
